@@ -9,6 +9,7 @@ namespace Vibe_Game
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
+        // Создание 
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -35,7 +36,7 @@ namespace Vibe_Game
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
-            // TODO: Add your update logic here
+           
 
             base.Update(gameTime);
         }
