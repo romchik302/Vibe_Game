@@ -1,6 +1,7 @@
 ﻿
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Vibe_Game.Core.Utilities;
 
 namespace Vibe_Game.Core.Engine
 { 
@@ -105,6 +106,42 @@ namespace Vibe_Game.Core.Engine
         public Vector2 ScreenToWorld(Vector2 screenPosition)
         {
             return Vector2.Transform(screenPosition, Matrix.Invert(TransformMatrix));
+        }
+
+        // Очень загадочная тряска камеры при получении урона
+        private Vector2 _shakeOffset;
+        private float _shakeTimer;
+        private float _shakeIntensity;
+
+        public void Shake(float intensity, float duration)
+        {
+            _shakeIntensity = intensity;
+            _shakeTimer = duration;
+        }
+
+        public void UpdateShake(GameTime gameTime)
+        {
+            if (_shakeTimer > 0)
+            {
+                _shakeTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+                _shakeOffset = new Vector2(
+                    (RandomHelper.NextFloat() * 2 - 1) * _shakeIntensity,
+                    (RandomHelper.NextFloat() * 2 - 1) * _shakeIntensity
+                );
+
+                if (_shakeTimer <= 0)
+                    _shakeOffset = Vector2.Zero;
+            }
+        }
+        // Матрица с учётом тряски
+        public Matrix GetShakenMatrix()
+        {
+            return
+                Matrix.CreateTranslation(-Position.X, -Position.Y, 0) *
+                Matrix.CreateTranslation(_shakeOffset.X, _shakeOffset.Y, 0) *
+                Matrix.CreateRotationZ(Rotation) *
+                Matrix.CreateScale(Zoom) *
+                Matrix.CreateTranslation(ViewportWidth * 0.5f, ViewportHeight * 0.5f, 0);
         }
     }
 }

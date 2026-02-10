@@ -1,20 +1,22 @@
 ﻿using Microsoft.Xna.Framework;
 using System.Collections.Generic;
-using Vibe_Game.Core.Scenes;
+using Vibe_Game.Scenes;
 
 namespace Vibe_Game.Core.Engine
 {
     public class SceneManager : DrawableGameComponent
     {
-        private readonly Dictionary<string, Scene> _scenes = new();
-        private Scene _currentScene;
+        private readonly Dictionary<string, BaseScene> _scenes = new();
+        private BaseScene _currentScene;
 
-        public SceneManager(Game game) : base(game)
+        public SceneManager(Microsoft.Xna.Framework.Game game) : base(game)
         {
-            game.Components.Add(this);
+            // УБРАТЬ: game.Components.Add(this); ← УДАЛИ ЭТУ СТРОКУ!
+            // Базовый конструктор уже это делает
+            System.Diagnostics.Debug.WriteLine("SceneManager создан");
         }
 
-        public void AddScene(string name, Scene scene)
+        public void AddScene(string name, BaseScene scene)
         {
             _scenes[name] = scene;
             scene.Initialize();

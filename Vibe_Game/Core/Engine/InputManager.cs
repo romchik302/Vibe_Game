@@ -16,7 +16,7 @@ namespace Vibe_Game.Core.Engine
         private static MouseState _previousMouseState;
 
         // Поддерживаемые действия
-        public enum Action { MoveUp, MoveDown, MoveLeft, MoveRight}
+        public enum Action { MoveUp, MoveDown, MoveLeft, MoveRight, Pause}
 
         // Настройки управления
         private static readonly Dictionary<Action, Keys[]> _keyBindings = new()
@@ -25,6 +25,7 @@ namespace Vibe_Game.Core.Engine
             [Action.MoveDown] = new[] { Keys.S, Keys.Down },
             [Action.MoveLeft] = new[] { Keys.A, Keys.Left },
             [Action.MoveRight] = new[] { Keys.D, Keys.Right },
+            [Action.Pause] = new[] { Keys.Escape },
         };
 
         public static void Update()

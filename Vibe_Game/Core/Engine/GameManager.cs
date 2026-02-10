@@ -10,6 +10,7 @@ namespace Vibe_Game.Core.Engine
         // Текущее состояние игры
         public enum GameState { Menu, Playing, Paused }
         public static GameState CurrentState { get; private set; }
+        public static bool DebugMode { get; set; } = false;
 
         // Службы (Service Locator паттерн)
         private static readonly Dictionary<Type, object> _services = new();
@@ -33,6 +34,17 @@ namespace Vibe_Game.Core.Engine
         {
             CurrentState = newState;
             // Можно добавить события OnStateChanged
+        }
+
+        public static void ClearServices()
+        {
+            _services.Clear();
+        }
+
+        // Сохранение статистики пробега 
+        public static void SaveRunStats(int score, float playTime, int floor)
+        {
+            // TODO: Реализовать сохранение
         }
     }
 }
