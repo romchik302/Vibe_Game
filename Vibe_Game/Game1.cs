@@ -26,6 +26,9 @@ namespace Vibe_Game
             IsMouseVisible = true;
 
             System.Diagnostics.Debug.WriteLine("Конструктор Game1 выполнен");
+
+            _sceneManager = new SceneManager(this);
+            Components.Add(_sceneManager);
         }
 
         protected override void Initialize()
@@ -79,7 +82,6 @@ namespace Vibe_Game
             System.Diagnostics.Debug.WriteLine("InputManager создан");
 
             // 5. SceneManager (ПОСЛЕДНИМ!)
-            _sceneManager = new SceneManager(this);
             Services.AddService(typeof(SceneManager), _sceneManager);
             System.Diagnostics.Debug.WriteLine("SceneManager создан");
 
