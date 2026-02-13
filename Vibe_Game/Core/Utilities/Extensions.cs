@@ -1,4 +1,4 @@
-﻿// IsaacClone.Game/Core/Utilities/Extensions.cs
+// IsaacClone.Game/Core/Utilities/Extensions.cs
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;

@@ -1,4 +1,4 @@
-﻿// Vibe_Game/Scenes/GameScene.cs
+// Vibe_Game/Scenes/GameScene.cs
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Vibe_Game.Core.Engine;
