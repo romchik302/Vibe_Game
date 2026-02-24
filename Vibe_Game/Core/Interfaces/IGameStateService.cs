@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Vibe_Game.Core.Interfaces
 {
-    public interface IGameStateManager
+    public interface IGameStateService
     {
         GameState CurrentState { get; }
         event EventHandler<GameState> StateChanged;

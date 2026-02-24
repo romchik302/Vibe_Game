@@ -9,7 +9,7 @@ namespace Vibe_Game.Core.Utilities
 {
     // Еще один вспомогательный непонятный класс написанный нейросетью
     // В этот раз это функции которые помогают создать иллюзию случайных событий в игре
-    public class RandomHelper : Interfaces.IRandomService
+    public class RandomHelper
     {
         private readonly Random _random = new Random();
 

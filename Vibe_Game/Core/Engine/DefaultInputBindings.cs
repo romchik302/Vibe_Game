@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -51,18 +51,15 @@ namespace Vibe_Game.Core.Engine
             //   "MoveDown": ["S", "Down"],
             //   ...
             // }
-            throw new System.NotImplementedException();
+            // Для прототипа оставляем привязки по умолчанию и игнорируем файл.
         }
 
         public void SaveToFile(string path)
         {
             // TODO: Реализовать сохранение в JSON/XML
-            throw new System.NotImplementedException();
+            // Для прототипа ничего не сохраняем.
         }
 
-        IEnumerable<Keys> IInputBindings.GetKeysForAction(InputAction action)
-        {
-            throw new NotImplementedException();
-        }
+        IEnumerable<Keys> IInputBindings.GetKeysForAction(InputAction action) => GetKeysForAction(action);
     }
 }

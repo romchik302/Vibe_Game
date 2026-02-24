@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Vibe_Game.Core.Utilities;
@@ -20,10 +20,13 @@ namespace Vibe_Game.Core.Engine
         public int ViewportWidth { get; }
         public int ViewportHeight { get; }
 
+        private readonly RandomHelper _random;
+
         public Camera(int viewportWidth, int viewportHeight)
         {
             ViewportWidth = viewportWidth;
             ViewportHeight = viewportHeight;
+            _random = new RandomHelper();
         }
 
         // Матрица трансформации (самое важное!)
@@ -125,8 +128,8 @@ namespace Vibe_Game.Core.Engine
             {
                 _shakeTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
                 _shakeOffset = new Vector2(
-                    (RandomHelper.NextFloat() * 2 - 1) * _shakeIntensity,
-                    (RandomHelper.NextFloat() * 2 - 1) * _shakeIntensity
+                    (_random.NextFloat() * 2 - 1) * _shakeIntensity,
+                    (_random.NextFloat() * 2 - 1) * _shakeIntensity
                 );
 
                 if (_shakeTimer <= 0)
