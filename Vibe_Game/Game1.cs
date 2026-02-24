@@ -3,7 +3,10 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
 using Vibe_Game.Core.Engine;
+using Vibe_Game.Core.Services;
+using Vibe_Game.Gameplay.Entities.Player;
 using Vibe_Game.Scenes;
+using DefaultInputBindings = Vibe_Game.Core.Engine.DefaultInputBindings;
 
 namespace Vibe_Game
 {
@@ -12,7 +15,8 @@ namespace Vibe_Game
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private SceneManager _sceneManager;
-        private InputManager _inputManager;
+        private InputService _inputService;
+        private PlayerContentLoader _contentLoader;
         private Camera _camera;
 
         public Game1()
@@ -29,6 +33,8 @@ namespace Vibe_Game
 
             _sceneManager = new SceneManager(this);
             Components.Add(_sceneManager);
+
+            _contentLoader = new PlayerContentLoader();
         }
 
         protected override void Initialize()
@@ -77,20 +83,13 @@ namespace Vibe_Game
             System.Diagnostics.Debug.WriteLine($"Камера создана: {_graphics.PreferredBackBufferWidth}x{_graphics.PreferredBackBufferHeight}");
 
             // 4. InputManager
-            _inputManager = new InputManager();
-            Services.AddService(typeof(InputManager), _inputManager);
+            _inputService = new InputService(new DefaultInputBindings());
+            Services.AddService(typeof(InputService), _inputService);
             System.Diagnostics.Debug.WriteLine("InputManager создан");
 
             // 5. SceneManager (ПОСЛЕДНИМ!)
             Services.AddService(typeof(SceneManager), _sceneManager);
             System.Diagnostics.Debug.WriteLine("SceneManager создан");
-
-            // Регистрируем в GameManager
-            GameManager.RegisterService(_spriteBatch);
-            GameManager.RegisterService(pixelTexture);
-            GameManager.RegisterService(_camera);
-            GameManager.RegisterService(_inputManager);
-            GameManager.RegisterService(_sceneManager);
 
             System.Diagnostics.Debug.WriteLine("--- Все сервисы инициализированы ---");
         }
@@ -144,7 +143,7 @@ namespace Vibe_Game
             try
             {
                 // Создаём игровую сцену
-                var gameScene = new GameScene(this);
+                var gameScene = new GameScene(this, new PlayerRenderer(), _inputService, _contentLoader);
                 _sceneManager.AddScene("game", gameScene);
                 System.Diagnostics.Debug.WriteLine("GameScene создана");
 
@@ -165,7 +164,7 @@ namespace Vibe_Game
         protected override void Update(GameTime gameTime)
         {
             // Обновляем InputManager каждый кадр
-            InputManager.Update();
+            _inputService.Update();
 
             // Базовое обновление (включает обновление SceneManager)
             base.Update(gameTime);

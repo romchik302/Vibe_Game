@@ -23,7 +23,7 @@ namespace Vibe_Game
                     // В дебаге показываем окно с ошибкой
                     System.Windows.Forms.MessageBox.Show(
                         $"Ошибка запуска игры:\n{ex.Message}\n\n{ex.StackTrace}",
-                        "Isaac Clone - Ошибка",
+                        "Ошибка",
                         System.Windows.Forms.MessageBoxButtons.OK,
                         System.Windows.Forms.MessageBoxIcon.Error
                     );

@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Vibe_Game.Core.Interfaces;
 using System.Collections.Generic;
@@ -65,14 +65,15 @@ namespace Vibe_Game.Core.Services
             return new Vector2(_currentMouseState.X, _currentMouseState.Y);
         }
 
-        public bool isActionPressed(InputAction action)
-        {
-            throw new System.NotImplementedException();
-        }
-
         public bool IsActionUp(InputAction action)
         {
-            throw new System.NotImplementedException();
+            var keys = _bindings.GetKeysForAction(action);
+            foreach (var key in keys)
+            {
+                if (_currentKeyState.IsKeyUp(key) && _previousKeyState.IsKeyDown(key))
+                    return true;
+            }
+            return false;
         }
     }
 }

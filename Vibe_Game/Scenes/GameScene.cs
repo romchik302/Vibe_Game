@@ -1,7 +1,7 @@
 // Vibe_Game/Scenes/GameScene.cs
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Vibe_Game.Core.Engine;
+using Vibe_Game.Core.Interfaces;
 using Vibe_Game.Core.Utilities;
 using Vibe_Game.Gameplay.Entities.Player;
 
@@ -10,28 +10,27 @@ namespace Vibe_Game.Scenes
     public class GameScene : BaseScene
     {
         private Player _player;
+        private readonly IPlayerRenderer _playerRenderer;
+        private readonly IInputService _inputService;
+        private readonly IPlayerContentLoader _contentLoader;
 
-        public GameScene(Microsoft.Xna.Framework.Game game) : base(game)
+
+		public GameScene(Game game, IPlayerRenderer playerRenderer, IInputService inputService, IPlayerContentLoader contentLoader)
+            : base(game)
         {
+            _playerRenderer = playerRenderer;
+            _inputService = inputService;
+            _contentLoader = contentLoader;
         }
 
         public override void Initialize()
         {
             // Создаём игрока
-            _player = new Player(new Vector2(400, 300));
+            _player = new Player(new Vector2(400, 300), _playerRenderer, _inputService, _contentLoader);
         }
 
         public override void LoadContent()
         {
-            // Получаем текстуру из сервисов Game, а не из GameManager
-            var pixelTexture = GetPixelTexture();
-
-            if (pixelTexture == null)
-            {
-                // Если нет в сервисах, пробуем из GameManager
-                pixelTexture = GameManager.GetService<Texture2D>();
-            }
-
             // Передаём контент игроку
             _player.LoadContent(GameInstance.Content);
         }
