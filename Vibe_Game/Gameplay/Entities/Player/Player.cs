@@ -51,16 +51,21 @@ namespace Vibe_Game.Gameplay.Entities.Player
 
         public override void Update(GameTime gameTime)
         {
-            // Обновляем контроллер
+            // 1. Обновляем контроллер (вычисляет желаемую скорость)
             Controller.Update(gameTime);
 
-            // Сохраняем направление стрельбы
+            // 2. Сохраняем направление стрельбы
             _lastShootDirection = Controller.ShootDirection;
 
-            // Применяем скорость
+            // 3. Применяем скорость (физика из базового класса Entity)
             Velocity = Controller.CurrentVelocity;
 
+            // Здесь происходит Position += Velocity * deltaTime
             base.Update(gameTime);
+
+            // ВАЖНО: Мы больше не ограничиваем позицию здесь (ClampToWindow удален),
+            // так как игрок теперь перемещается по глобальному миру с множеством комнат,
+            // а столкновениями со стенами занимается HandleRoomTransitions в GameScene.cs.
         }
 
         public override void Draw(SpriteBatch spriteBatch)
