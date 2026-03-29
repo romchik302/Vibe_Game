@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Content;
 using Vibe_Game.Core.Engine;
 using Vibe_Game.Core.Utilities;
 using Vibe_Game.Core.Interfaces;
+using Vibe_Game.Core.Settings;
 
 namespace Vibe_Game.Gameplay.Entities.Player
 {
@@ -74,9 +75,15 @@ namespace Vibe_Game.Gameplay.Entities.Player
             _renderer.Draw(spriteBatch, Position, _lastShootDirection, Color);
         }
 
+        // Теперь мы берем размеры напрямую из единого файла настроек
         public override Rectangle GetBounds()
         {
-            return new Rectangle((int)Position.X - 8, (int)Position.Y - 8, 16, 16);
+            return new Rectangle(
+                (int)Position.X - PlayerConfig.Radius,
+                (int)Position.Y - PlayerConfig.Radius,
+                PlayerConfig.Size,
+                PlayerConfig.Size
+            );
         }
     }
 }

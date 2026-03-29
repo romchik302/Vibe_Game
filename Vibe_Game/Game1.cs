@@ -6,6 +6,7 @@ using Vibe_Game.Core.Engine;
 using Vibe_Game.Core.Services;
 using Vibe_Game.Gameplay.Entities.Player;
 using Vibe_Game.Scenes;
+using Vibe_Game.Core.Settings;
 using DefaultInputBindings = Vibe_Game.Core.Engine.DefaultInputBindings;
 
 namespace Vibe_Game
