@@ -88,7 +88,7 @@ namespace Vibe_Game.Scenes
 
             if (_currentRoomGrid != _roomGridLastFrame)
             {
-                TryActivateResidentEnemy(_currentRoomGrid);
+                TryActivateEnemies(_currentRoomGrid);
                 _roomGridLastFrame = _currentRoomGrid;
             }
 
@@ -98,10 +98,10 @@ namespace Vibe_Game.Scenes
             base.Update(gameTime);
         }
 
-        private void TryActivateResidentEnemy(Point grid)
+        private void TryActivateEnemies(Point grid)
         {
             Room room = _floorMap[grid.X, grid.Y];
-            room?.ResidentEnemy?.Activate();
+            room?.enemies?.ForEach(e => e.Activate());
         }
 
         private void SpawnFlyingEnemiesInRooms(int floorIndex)
@@ -113,7 +113,7 @@ namespace Vibe_Game.Scenes
                 for (int gy = 0; gy < WorldConfig.GridSize; gy++)
                 {
                     Room room = _floorMap[gx, gy];
-                    if (room == null || room.ResidentEnemy != null)
+                    if (room == null)
                         continue;
 
                     if (room.Type == LevelGenerator.RoomType.Start)
@@ -126,7 +126,7 @@ namespace Vibe_Game.Scenes
                         gx * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
                         gy * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f);
 
-                    room.ResidentEnemy = new FlyingEnemy(spawnWorld, _flyingCollision);
+                    room.enemies.Add(new FlyingEnemy(spawnWorld, _flyingCollision));
                 }
             }
         }
@@ -137,17 +137,21 @@ namespace Vibe_Game.Scenes
             {
                 for (int y = 0; y < WorldConfig.GridSize; y++)
                 {
-                    Enemy enemy = _floorMap[x, y]?.ResidentEnemy;
-                    if (enemy == null)
-                        continue;
+                    Room room = _floorMap[x, y];
+                    if (room?.enemies == null) continue;
 
-                    if (enemy is FlyingEnemy flying)
-                        flying.ChaseTarget = _player.Position;
+                    for (int i = room.enemies.Count - 1; i >= 0; i--)
+                    {
+                        Enemy enemy = room.enemies[i];
 
-                    enemy.Update(gameTime);
+                        if (enemy is FlyingEnemy flying)
+                            flying.ChaseTarget = _player.Position;
 
-                    if (!enemy.IsAlive)
-                        _floorMap[x, y].ResidentEnemy = null;
+                        enemy.Update(gameTime);
+
+                        if (!enemy.IsAlive)
+                            room.enemies.RemoveAt(i);
+                    }
                 }
             }
         }
@@ -436,9 +440,14 @@ namespace Vibe_Game.Scenes
             {
                 for (int ey = 0; ey < WorldConfig.GridSize; ey++)
                 {
-                    Enemy enemy = _floorMap[ex, ey]?.ResidentEnemy;
-                    if (enemy != null && enemy.IsAlive)
-                        enemy.Draw(sb);
+                    Room room = _floorMap[ex, ey];
+                    if (room?.enemies == null) continue;
+
+                    foreach (var enemy in room.enemies)
+                    {
+                        if (enemy.IsAlive)
+                            enemy.Draw(sb);
+                    }
                 }
             }
 
@@ -448,6 +457,27 @@ namespace Vibe_Game.Scenes
             sb.Begin(samplerState: SamplerState.PointClamp);
             DrawMinimap(sb, pixel);
             sb.End();
+        }
+
+        private Vector2 GetRandomFreeTilePosition(Room room, int gx, int gy, Random rng)
+        {
+            for (int attempt = 0; attempt < 20; attempt++)
+            {
+                int tx = rng.Next(1, WorldConfig.RoomWidthTiles - 1);
+                int ty = rng.Next(1, WorldConfig.RoomHeightTiles - 1);
+
+                if (room.Tiles[tx, ty] == TileType.Floor)
+                {
+                    float wx = gx * WorldConfig.RoomWidthPx + tx * WorldConfig.TileSize + WorldConfig.TileSize / 2f;
+                    float wy = gy * WorldConfig.RoomHeightPx + ty * WorldConfig.TileSize + WorldConfig.TileSize / 2f;
+                    return new Vector2(wx, wy);
+                }
+            }
+
+            // fallback — центр комнаты
+            return new Vector2(
+                gx * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
+                gy * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f);
         }
 
         private void DrawSingleRoom(SpriteBatch sb, Texture2D pixel, Room room, int gx, int gy)

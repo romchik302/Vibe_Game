@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using System;
+using System.Collections.Generic;
 using Vibe_Game.Gameplay.Entities.Enemies;
 
 namespace Vibe_Game.Core.Services
@@ -18,7 +19,7 @@ namespace Vibe_Game.Core.Services
         public Point ButtonPos { get; set; }
 
         /// <summary>˜˜˜˜, ˜˜˜˜˜˜˜˜˜˜˜ ˜ ˜˜˜˜ ˜˜˜˜˜˜˜ (˜˜˜˜˜˜˜ B). ˜˜˜˜˜˜˜˜ ˜˜˜˜˜˜ ˜˜˜˜˜ ˜˜˜˜˜˜˜˜˜ ˜˜˜˜˜.</summary>
-        public Enemy ResidentEnemy { get; set; }
+        public List<Enemy> enemies { get; private set; }
         private Random _rnd = new Random();
 
         public Room(int widthInTiles, int heightInTiles, LevelGenerator.RoomType type)
@@ -27,8 +28,8 @@ namespace Vibe_Game.Core.Services
             HeightInTiles = heightInTiles;
             Type = type;
             Tiles = new TileType[WidthInTiles, HeightInTiles];
+            enemies = new List<Enemy>();
 
-            // ˜˜˜˜˜˜ ˜ ˜˜˜˜˜˜˜˜˜ ˜˜˜˜˜ (˜˜ ˜ ˜˜˜˜˜)
             ButtonPos = new Point(_rnd.Next(2, WidthInTiles - 2), _rnd.Next(2, HeightInTiles - 2));
 
             for (int x = 0; x < WidthInTiles; x++)
