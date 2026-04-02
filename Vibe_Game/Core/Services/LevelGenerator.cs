@@ -1,80 +1,54 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Vibe_Game.Core.Settings;
 
 namespace Vibe_Game.Core.Services
 {
-	public class LevelGenerator
-	{
-		private readonly Random _random = new Random();
-		private const int GridSize = 13;
-		private const int Center = 6;
+    public class LevelGenerator
+    {
+        private readonly Random _random = new Random();
+        public enum RoomType { None, Normal, Start, Boss, Shop, Treasure }
 
-		// Добавлен Treasure для исправления ошибки CS0117
-		public enum RoomType { None, Normal, Start, Boss, Shop, Treasure }
+        public Room[,] GenerateFloor(int floorIndex)
+        {
+            Room[,] grid = new Room[WorldConfig.GridSize, WorldConfig.GridSize];
 
-		public RoomType[,] GenerateFloor(int floorIndex)
-		{
-			// Формула: Rooms = random(5, 6) + 2.6 * FloorIndex
-			int targetRooms = (int)(_random.Next(5, 7) + 2.6 * 1);
+            // ВАЖНО: Вот эта строка отсутствовала! Мы создаем список позиций.
+            List<Point> positions = new List<Point>();
 
-			RoomType[,] grid = new RoomType[GridSize, GridSize];
-			List<Vector2> roomPositions = new List<Vector2>();
+            Point center = new Point(WorldConfig.CenterGrid, WorldConfig.CenterGrid);
 
-			// Стартовая комната в центре (6,6)
-			Vector2 startPos = new Vector2(Center, Center);
-			grid[Center, Center] = RoomType.Start;
-			roomPositions.Add(startPos);
+            // Создаем стартовую комнату один раз, используя константы
+            grid[center.X, center.Y] = new Room(WorldConfig.RoomWidthTiles, WorldConfig.RoomHeightTiles, RoomType.Start);
+            grid[center.X, center.Y].IsLocked = false; // Стартовая всегда открыта
 
-			int roomsPlaced = 1;
-			while (roomsPlaced < targetRooms)
-			{
-				Vector2 currentPos = roomPositions[_random.Next(roomPositions.Count)];
-				Vector2 nextPos = GetRandomNeighbor(currentPos);
+            positions.Add(center); // Добавляем стартовую позицию в список
 
-				if (IsInsideGrid(nextPos) && grid[(int)nextPos.X, (int)nextPos.Y] == RoomType.None)
-				{
-					// Правило: не более одного соседа
-					if (CountNeighbors(nextPos, grid) <= 1)
-					{
-						grid[(int)nextPos.X, (int)nextPos.Y] = RoomType.Normal;
-						roomPositions.Add(nextPos);
-						roomsPlaced++;
-					}
-				}
-			}
+            int target = (int)(_random.Next(5, 7) + 2.6 * floorIndex);
 
-			return grid;
-		}
+            while (positions.Count < target)
+            {
+                Point curr = positions[_random.Next(positions.Count)];
+                Point next = _random.Next(4) switch
+                {
+                    0 => new Point(curr.X, curr.Y - 1),
+                    1 => new Point(curr.X, curr.Y + 1),
+                    2 => new Point(curr.X - 1, curr.Y),
+                    _ => new Point(curr.X + 1, curr.Y)
+                };
 
-		private Vector2 GetRandomNeighbor(Vector2 pos)
-		{
-			int dir = _random.Next(4);
-			return dir switch
-			{
-				0 => new Vector2(pos.X, pos.Y - 1),
-				1 => new Vector2(pos.X, pos.Y + 1),
-				2 => new Vector2(pos.X - 1, pos.Y),
-				_ => new Vector2(pos.X + 1, pos.Y),
-			};
-		}
-
-		private bool IsInsideGrid(Vector2 pos)
-		{
-			return pos.X >= 0 && pos.X < GridSize && pos.Y >= 0 && pos.Y < GridSize;
-		}
-
-		private int CountNeighbors(Vector2 pos, RoomType[,] grid)
-		{
-			int count = 0;
-			Vector2[] dirs = { new(0, 1), new(0, -1), new(1, 0), new(-1, 0) };
-			foreach (var d in dirs)
-			{
-				Vector2 check = pos + d;
-				if (IsInsideGrid(check) && grid[(int)check.X, (int)check.Y] != RoomType.None)
-					count++;
-			}
-			return count;
-		}
-	}
+                // Заменили магические числа 13 на WorldConfig.GridSize
+                if (next.X >= 0 && next.X < WorldConfig.GridSize &&
+                    next.Y >= 0 && next.Y < WorldConfig.GridSize &&
+                    grid[next.X, next.Y] == null)
+                {
+                    // Заменили 20 и 11 на настройки размеров
+                    grid[next.X, next.Y] = new Room(WorldConfig.RoomWidthTiles, WorldConfig.RoomHeightTiles, RoomType.Normal);
+                    positions.Add(next);
+                }
+            }
+            return grid;
+        }
+    }
 }
