@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using System;
+using Vibe_Game.Gameplay.Entities.Enemies;
 
 namespace Vibe_Game.Core.Services
 {
@@ -13,8 +14,11 @@ namespace Vibe_Game.Core.Services
         public int HeightInTiles { get; private set; }
         public LevelGenerator.RoomType Type { get; set; }
 
-        public bool IsLocked { get; set; } = false; // Ïî óìîë÷àíèş îòêğûòà
+        public bool IsLocked { get; set; } = false; // ˜˜ ˜˜˜˜˜˜˜˜˜ ˜˜˜˜˜˜˜
         public Point ButtonPos { get; set; }
+
+        /// <summary>˜˜˜˜, ˜˜˜˜˜˜˜˜˜˜˜ ˜ ˜˜˜˜ ˜˜˜˜˜˜˜ (˜˜˜˜˜˜˜ B). ˜˜˜˜˜˜˜˜ ˜˜˜˜˜˜ ˜˜˜˜˜ ˜˜˜˜˜˜˜˜˜ ˜˜˜˜˜.</summary>
+        public Enemy ResidentEnemy { get; set; }
         private Random _rnd = new Random();
 
         public Room(int widthInTiles, int heightInTiles, LevelGenerator.RoomType type)
@@ -24,7 +28,7 @@ namespace Vibe_Game.Core.Services
             Type = type;
             Tiles = new TileType[WidthInTiles, HeightInTiles];
 
-            // Êíîïêà â ñëó÷àéíîì ìåñòå (íå ó ñòåíû)
+            // ˜˜˜˜˜˜ ˜ ˜˜˜˜˜˜˜˜˜ ˜˜˜˜˜ (˜˜ ˜ ˜˜˜˜˜)
             ButtonPos = new Point(_rnd.Next(2, WidthInTiles - 2), _rnd.Next(2, HeightInTiles - 2));
 
             for (int x = 0; x < WidthInTiles; x++)

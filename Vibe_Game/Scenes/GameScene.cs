@@ -1,11 +1,15 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Vibe_Game.Core.Services;
 using Vibe_Game.Gameplay.Entities.Player;
+using Vibe_Game.Gameplay.Projectiles;
+using Vibe_Game.Gameplay.Weapons;
 using Vibe_Game.Core.Interfaces;
 using Vibe_Game.Core.Utilities;
 using Vibe_Game.Core.Settings;
+using Vibe_Game.Gameplay.Entities.Enemies;
 
 namespace Vibe_Game.Scenes
 {
@@ -14,7 +18,13 @@ namespace Vibe_Game.Scenes
         private Player _player;
         private Room[,] _floorMap;
         private Point _currentRoomGrid;
+        private Point _roomGridLastFrame = new Point(-1, -1);
         private Vector2 _cameraPosition;
+
+        private SceneFlyingCollision _flyingCollision;
+
+        private readonly List<Projectile> _projectiles = new();
+        private SceneAttackContext _attackContext;
 
         private readonly IPlayerRenderer _playerRenderer;
         private readonly IInputService _inputService;
@@ -40,6 +50,9 @@ namespace Vibe_Game.Scenes
             _levelGenerator = new LevelGenerator();
             _floorMap = _levelGenerator.GenerateFloor(1);
 
+            _flyingCollision = new SceneFlyingCollision(this);
+            SpawnFlyingEnemiesInRooms(floorIndex: 1);
+
             _currentRoomGrid = new Point(WorldConfig.CenterGrid, WorldConfig.CenterGrid);
 
             Vector2 startPos = new Vector2(
@@ -47,7 +60,14 @@ namespace Vibe_Game.Scenes
                 WorldConfig.CenterGrid * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f
             );
 
-            _player = new Player(startPos, _playerRenderer, _inputService, _contentLoader);
+            _attackContext = new SceneAttackContext(this);
+            _player = new Player(startPos, _playerRenderer, _inputService, _contentLoader, _attackContext);
+            _player.EquippedWeapon = new ForwardProjectileWeapon(
+                cooldownSeconds: 0.3f,
+                projectileSpeed: 250f,
+                damage: 1,
+                spawnOffsetPixels: 20f,
+                lifetimeSeconds: 1f);
             _cameraPosition = startPos;
 
             base.Initialize();
@@ -57,14 +77,111 @@ namespace Vibe_Game.Scenes
 
         public override void Update(GameTime gameTime)
         {
+            _attackContext.Sync(gameTime);
+
             Vector2 oldPos = _player.Position;
             _player.Update(gameTime);
 
             CheckTileCollision(oldPos);
             CheckButton();
+            UpdateProjectiles(gameTime);
+
+            if (_currentRoomGrid != _roomGridLastFrame)
+            {
+                TryActivateResidentEnemy(_currentRoomGrid);
+                _roomGridLastFrame = _currentRoomGrid;
+            }
+
+            UpdateEnemies(gameTime);
             UpdateCamera();
 
             base.Update(gameTime);
+        }
+
+        private void TryActivateResidentEnemy(Point grid)
+        {
+            Room room = _floorMap[grid.X, grid.Y];
+            room?.ResidentEnemy?.Activate();
+        }
+
+        private void SpawnFlyingEnemiesInRooms(int floorIndex)
+        {
+            var rng = new Random(unchecked(floorIndex * 397 ^ 0x5EED));
+
+            for (int gx = 0; gx < WorldConfig.GridSize; gx++)
+            {
+                for (int gy = 0; gy < WorldConfig.GridSize; gy++)
+                {
+                    Room room = _floorMap[gx, gy];
+                    if (room == null || room.ResidentEnemy != null)
+                        continue;
+
+                    if (room.Type == LevelGenerator.RoomType.Start)
+                        continue;
+
+                    if (rng.NextDouble() > EnemyConfig.FlyingSpawnChancePerRoom)
+                        continue;
+
+                    var spawnWorld = new Vector2(
+                        gx * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
+                        gy * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f);
+
+                    room.ResidentEnemy = new FlyingEnemy(spawnWorld, _flyingCollision);
+                }
+            }
+        }
+
+        private void UpdateEnemies(GameTime gameTime)
+        {
+            for (int x = 0; x < WorldConfig.GridSize; x++)
+            {
+                for (int y = 0; y < WorldConfig.GridSize; y++)
+                {
+                    Enemy enemy = _floorMap[x, y]?.ResidentEnemy;
+                    if (enemy == null)
+                        continue;
+
+                    if (enemy is FlyingEnemy flying)
+                        flying.ChaseTarget = _player.Position;
+
+                    enemy.Update(gameTime);
+
+                    if (!enemy.IsAlive)
+                        _floorMap[x, y].ResidentEnemy = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Коллизия для летающих: внутренние клетки комнаты (не наружное кольцо тайлов) никогда не блокируют;
+        /// периметр и двери — как у <see cref="IsPointWall"/>.
+        /// </summary>
+        private bool IsFlyingPointBlocked(Vector2 worldPosition)
+        {
+            int rx = (int)Math.Floor(worldPosition.X / WorldConfig.RoomWidthPx);
+            int ry = (int)Math.Floor(worldPosition.Y / WorldConfig.RoomHeightPx);
+            Point roomGrid = new Point(
+                Math.Clamp(rx, 0, WorldConfig.GridSize - 1),
+                Math.Clamp(ry, 0, WorldConfig.GridSize - 1));
+
+            Room room = _floorMap[roomGrid.X, roomGrid.Y];
+            if (room == null)
+                return true;
+
+            float lx = worldPosition.X % WorldConfig.RoomWidthPx;
+            float ly = worldPosition.Y % WorldConfig.RoomHeightPx;
+            if (lx < 0) lx += WorldConfig.RoomWidthPx;
+            if (ly < 0) ly += WorldConfig.RoomHeightPx;
+
+            int tx = (int)Math.Floor(lx / WorldConfig.TileSize);
+            int ty = (int)Math.Floor(ly / WorldConfig.TileSize);
+
+            bool interior = tx >= 1 && tx < WorldConfig.RoomWidthTiles - 1
+                && ty >= 1 && ty < WorldConfig.RoomHeightTiles - 1;
+            if (interior)
+                return false;
+
+            return IsPointWall(room, lx, ly);
         }
 
         private void CheckTileCollision(Vector2 oldPos)
@@ -159,6 +276,62 @@ namespace Vibe_Game.Scenes
                    IsPointWall(room, lx + offset, ly + offset);
         }
 
+        private bool IsWorldPointBlocked(Vector2 worldPosition)
+        {
+            int rx = (int)Math.Floor(worldPosition.X / WorldConfig.RoomWidthPx);
+            int ry = (int)Math.Floor(worldPosition.Y / WorldConfig.RoomHeightPx);
+            Point roomGrid = new Point(
+                Math.Clamp(rx, 0, WorldConfig.GridSize - 1),
+                Math.Clamp(ry, 0, WorldConfig.GridSize - 1));
+
+            Room room = _floorMap[roomGrid.X, roomGrid.Y];
+            if (room == null) return true;
+
+            float lx = worldPosition.X % WorldConfig.RoomWidthPx;
+            float ly = worldPosition.Y % WorldConfig.RoomHeightPx;
+            if (lx < 0) lx += WorldConfig.RoomWidthPx;
+            if (ly < 0) ly += WorldConfig.RoomHeightPx;
+
+            return IsPointWall(room, lx, ly);
+        }
+
+        private void SpawnProjectileFromArgs(ProjectileSpawnArgs args)
+        {
+            _projectiles.Add(new Projectile(
+                args.Position,
+                args.Direction,
+                args.Speed,
+                args.Damage,
+                args.LifetimeSeconds));
+        }
+
+        private void UpdateProjectiles(GameTime gameTime)
+        {
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            for (int i = _projectiles.Count - 1; i >= 0; i--)
+            {
+                Projectile p = _projectiles[i];
+                if (!p.IsAlive)
+                {
+                    _projectiles.RemoveAt(i);
+                    continue;
+                }
+
+                Vector2 next = p.Position + p.Velocity * dt;
+                if (IsWorldPointBlocked(next))
+                {
+                    p.IsAlive = false;
+                    _projectiles.RemoveAt(i);
+                    continue;
+                }
+
+                p.Update(gameTime);
+                if (!p.IsAlive)
+                    _projectiles.RemoveAt(i);
+            }
+        }
+
         private bool IsPointWall(Room room, float lx, float ly)
         {
             int tx = (int)Math.Floor(lx / WorldConfig.TileSize);
@@ -251,6 +424,24 @@ namespace Vibe_Game.Scenes
                     if (_floorMap[x, y] != null)
                         DrawSingleRoom(sb, pixel, _floorMap[x, y], x, y);
 
+            foreach (Projectile p in _projectiles)
+            {
+                if (p.IsAlive)
+                    sb.Draw(pixel,
+                        new Rectangle((int)p.Position.X - 2, (int)p.Position.Y - 2, 4, 4),
+                        Color.SkyBlue);
+            }
+
+            for (int ex = 0; ex < WorldConfig.GridSize; ex++)
+            {
+                for (int ey = 0; ey < WorldConfig.GridSize; ey++)
+                {
+                    Enemy enemy = _floorMap[ex, ey]?.ResidentEnemy;
+                    if (enemy != null && enemy.IsAlive)
+                        enemy.Draw(sb);
+                }
+            }
+
             _player.Draw(sb);
             sb.End();
 
@@ -319,6 +510,38 @@ namespace Vibe_Game.Scenes
                         sb.DrawRectangle(pixel, r, GameColors.MinimapCurrent, 1);
                 }
             }
+        }
+
+        private sealed class SceneAttackContext : IAttackContext
+        {
+            private readonly GameScene _owner;
+            private GameTime _gameTime;
+
+            public SceneAttackContext(GameScene owner)
+            {
+                _owner = owner;
+            }
+
+            public void Sync(GameTime gameTime) => _gameTime = gameTime;
+
+            public GameTime GameTime => _gameTime;
+
+            public SpriteBatch SpriteBatch => null;
+
+            public void SpawnProjectile(ProjectileSpawnArgs args) => _owner.SpawnProjectileFromArgs(args);
+
+            public bool WouldCollideAtWorld(Vector2 worldPosition, float collisionRadius)
+                => _owner.IsWorldPointBlocked(worldPosition);
+        }
+
+        private sealed class SceneFlyingCollision : IFlyingCollisionChecker
+        {
+            private readonly GameScene _owner;
+
+            public SceneFlyingCollision(GameScene owner) => _owner = owner;
+
+            public bool IsFlyingBlocked(Vector2 worldPosition)
+                => _owner.IsFlyingPointBlocked(worldPosition);
         }
     }
 }
