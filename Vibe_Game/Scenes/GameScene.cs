@@ -122,11 +122,15 @@ namespace Vibe_Game.Scenes
                     if (rng.NextDouble() > EnemyConfig.FlyingSpawnChancePerRoom)
                         continue;
 
-                    var spawnWorld = new Vector2(
-                        gx * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
-                        gy * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f);
+                    // сколько врагов спавнить
+                    int enemyCount = rng.Next(2, 6); // от 2 до 5
 
-                    room.enemies.Add(new FlyingEnemy(spawnWorld, _flyingCollision));
+                    for (int i = 0; i < enemyCount; i++)
+                    {
+                        Vector2 spawnWorld = GetRandomFreeTilePosition(room, gx, gy, rng);
+
+                        room.enemies.Add(new FlyingEnemy(spawnWorld, _flyingCollision));
+                    }
                 }
             }
         }
@@ -306,7 +310,9 @@ namespace Vibe_Game.Scenes
                 args.Direction,
                 args.Speed,
                 args.Damage,
-                args.LifetimeSeconds));
+                args.LifetimeSeconds,
+                args.Radius
+            ));
         }
 
         private void UpdateProjectiles(GameTime gameTime)
@@ -331,6 +337,31 @@ namespace Vibe_Game.Scenes
                 }
 
                 p.Update(gameTime);
+
+                // проверка попадания
+                int rx = (int)(p.Position.X / WorldConfig.RoomWidthPx);
+                int ry = (int)(p.Position.Y / WorldConfig.RoomHeightPx);
+
+                rx = Math.Clamp(rx, 0, WorldConfig.GridSize - 1);
+                ry = Math.Clamp(ry, 0, WorldConfig.GridSize - 1);
+
+                Room room = _floorMap[rx, ry];
+
+                if (room?.enemies != null)
+                {
+                    foreach (var enemy in room.enemies)
+                    {
+                        if (!enemy.IsAlive) continue;
+
+                        if (p.GetBounds().Intersects(enemy.GetBounds()))
+                        {
+                            enemy.TakeDamage((int)p.Damage);
+                            p.IsAlive = false;
+                            break;
+                        }
+                    }
+                }
+
                 if (!p.IsAlive)
                     _projectiles.RemoveAt(i);
             }
@@ -431,9 +462,17 @@ namespace Vibe_Game.Scenes
             foreach (Projectile p in _projectiles)
             {
                 if (p.IsAlive)
+                {
+                    int r = (int)p.Radius;
+
                     sb.Draw(pixel,
-                        new Rectangle((int)p.Position.X - 2, (int)p.Position.Y - 2, 4, 4),
+                        new Rectangle(
+                            (int)p.Position.X - r,
+                            (int)p.Position.Y - r,
+                            r * 2,
+                            r * 2),
                         Color.SkyBlue);
+                }
             }
 
             for (int ex = 0; ex < WorldConfig.GridSize; ex++)

@@ -10,19 +10,22 @@ public sealed class ForwardProjectileWeapon : WeaponBase
     private readonly int _damage;
     private readonly float _spawnOffset;
     private readonly float _lifetime;
+    private readonly float _radius;
 
     public ForwardProjectileWeapon(
-        float cooldownSeconds,
-        float projectileSpeed,
-        int damage,
-        float spawnOffsetPixels,
-        float lifetimeSeconds)
-        : base("Forward Shot", cooldownSeconds)
+    float cooldownSeconds,
+    float projectileSpeed,
+    int damage,
+    float spawnOffsetPixels,
+    float lifetimeSeconds,
+    float radius = 2f)
+    : base("Forward Shot", cooldownSeconds)
     {
         _projectileSpeed = projectileSpeed;
         _damage = damage;
         _spawnOffset = spawnOffsetPixels;
         _lifetime = lifetimeSeconds;
+        _radius = radius;
     }
 
     public override bool TryPrimaryAttack(IAttackContext context, Vector2 ownerPosition, Vector2 facingDirection)
@@ -41,7 +44,8 @@ public sealed class ForwardProjectileWeapon : WeaponBase
             Direction = dir,
             Speed = _projectileSpeed,
             Damage = _damage,
-            LifetimeSeconds = _lifetime
+            LifetimeSeconds = _lifetime,
+            Radius = _radius
         });
 
         return true;

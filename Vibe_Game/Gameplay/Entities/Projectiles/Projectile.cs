@@ -10,8 +10,9 @@ public sealed class Projectile : Entity
     public float Speed { get; }
     public float Damage { get; }
     public float LifeLeft { get; private set; }
+    public float Radius {  get; private set; }
 
-    public Projectile(Vector2 position, Vector2 direction, float speed, float damage, float lifetimeSeconds)
+    public Projectile(Vector2 position, Vector2 direction, float speed, float damage, float lifetimeSeconds, float radius)
     {
         Position = position;
         Direction = Vector2.Normalize(direction);
@@ -19,6 +20,7 @@ public sealed class Projectile : Entity
         Damage = damage;
         LifeLeft = lifetimeSeconds;
         Velocity = Direction * speed;
+        Radius = radius;
     }
 
     public override void Update(GameTime gameTime)
@@ -27,5 +29,15 @@ public sealed class Projectile : Entity
         LifeLeft -= (float)gameTime.ElapsedGameTime.TotalSeconds;
         if (LifeLeft <= 0f)
             IsAlive = false;
+    }
+    public override Rectangle GetBounds()
+    {
+        int r = (int)Radius;
+        return new Rectangle(
+            (int)Position.X - r,
+            (int)Position.Y - r,
+            r * 2,
+            r * 2
+        );
     }
 }

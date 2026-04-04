@@ -9,4 +9,5 @@ public readonly struct ProjectileSpawnArgs
     public float Speed { get; init; }
     public float Damage { get; init; }
     public float LifetimeSeconds { get; init; }
+    public float Radius { get; init; }
 }
