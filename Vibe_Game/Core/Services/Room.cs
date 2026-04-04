@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
 using System;
+using System.Collections.Generic;
+using Vibe_Game.Gameplay.Entities.Enemies;
 
 namespace Vibe_Game.Core.Services
 {
@@ -13,8 +15,11 @@ namespace Vibe_Game.Core.Services
         public int HeightInTiles { get; private set; }
         public LevelGenerator.RoomType Type { get; set; }
 
-        public bool IsLocked { get; set; } = false; // По умолчанию открыта
+        public bool IsLocked { get; set; } = false; // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         public Point ButtonPos { get; set; }
+
+        /// <summary>пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ B). пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.</summary>
+        public List<Enemy> enemies { get; private set; }
         private Random _rnd = new Random();
 
         public Room(int widthInTiles, int heightInTiles, LevelGenerator.RoomType type)
@@ -23,8 +28,8 @@ namespace Vibe_Game.Core.Services
             HeightInTiles = heightInTiles;
             Type = type;
             Tiles = new TileType[WidthInTiles, HeightInTiles];
+            enemies = new List<Enemy>();
 
-            // Кнопка в случайном месте (не у стены)
             ButtonPos = new Point(_rnd.Next(2, WidthInTiles - 2), _rnd.Next(2, HeightInTiles - 2));
 
             for (int x = 0; x < WidthInTiles; x++)

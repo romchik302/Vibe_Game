@@ -17,11 +17,15 @@ namespace Vibe_Game.Core.Engine
         {
             _bindings = new Dictionary<InputAction, Keys[]>
             {
-                [InputAction.MoveUp] = new[] { Keys.W, Keys.Up },
-                [InputAction.MoveDown] = new[] { Keys.S, Keys.Down },
-                [InputAction.MoveLeft] = new[] { Keys.A, Keys.Left },
-                [InputAction.MoveRight] = new[] { Keys.D, Keys.Right },
-                [InputAction.Shoot] = new[] { Keys.Space },
+                [InputAction.MoveUp] = new[] { Keys.W},
+                [InputAction.MoveDown] = new[] { Keys.S},
+                [InputAction.MoveLeft] = new[] { Keys.A},
+                [InputAction.MoveRight] = new[] { Keys.D},
+                [InputAction.ShootUp] = new[] { Keys.Up },
+                [InputAction.ShootDown] = new[] { Keys.Down},
+                [InputAction.ShootLeft] = new[] { Keys.Left},
+                [InputAction.ShootRight] = new[] { Keys.Right},
+                [InputAction.Fire] = new[] { Keys.Space },
                 [InputAction.Pause] = new[] { Keys.Escape },
                 [InputAction.Interact] = new[] { Keys.E }
             };

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,7 +21,11 @@ namespace Vibe_Game.Core.Interfaces
         MoveDown,
         MoveLeft,
         MoveRight,
-        Shoot,
+        ShootUp,
+        ShootDown,
+        ShootLeft,
+        ShootRight,
+        Fire,
         Pause,
         Interact
     }

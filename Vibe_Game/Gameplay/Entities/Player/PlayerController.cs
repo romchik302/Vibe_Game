@@ -1,49 +1,35 @@
-﻿using Microsoft.Xna.Framework;
-using Vibe_Game.Core.Engine;
-using Vibe_Game.Core.Services;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
 using Vibe_Game.Core.Interfaces;
-
 
 namespace Vibe_Game.Gameplay.Entities.Player
 {
     public class PlayerController
     {
-        private readonly Player _player;
         public IInputService _inputService;
 
-        // Настройки движения
         public float MoveSpeed { get; set; } = 200f;
         public Vector2 CurrentVelocity { get; private set; }
         public Vector2 ShootDirection { get; private set; }
-        
 
-        // Таймеры для стрельбы (как в Isaac - с задержкой)
-        private float _shootCooldown;
-        private const float ShootDelay = 0.3f; // Задержка между выстрелами
+        private readonly List<InputAction> _shootPressOrder = new();
 
         public PlayerController(Player player, IInputService inputService)
         {
-            _player = player;
+            _ = player;
             _inputService = inputService;
         }
 
         public void Update(GameTime gameTime)
         {
-            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-            // Обновляем таймер стрельбы
-            if (_shootCooldown > 0)
-                _shootCooldown -= deltaTime;
-
-            // Обработка движения
-            HandleMovement(deltaTime);
+            HandleMovement();
+            UpdateShootDirectionIsaacStyle();
         }
 
-        private void HandleMovement(float deltaTime)
+        private void HandleMovement()
         {
             Vector2 inputDirection = Vector2.Zero;
 
-            // Движение по WASD
             if (_inputService.IsActionDown(InputAction.MoveUp))
                 inputDirection.Y -= 1;
             if (_inputService.IsActionDown(InputAction.MoveDown))
@@ -53,12 +39,57 @@ namespace Vibe_Game.Gameplay.Entities.Player
             if (_inputService.IsActionDown(InputAction.MoveRight))
                 inputDirection.X += 1;
 
-            // Нормализуем диагональное движение
             if (inputDirection != Vector2.Zero)
                 inputDirection.Normalize();
 
-            // Устанавливаем скорость
             CurrentVelocity = inputDirection * MoveSpeed;
+        }
+
+        /// <summary>
+        /// Только ортогональ: активное направление — по первой зажатой стрелке прицела;
+        /// при нескольких нажатиях в одном кадре порядок фиксирован: Left, Right, Up, Down.
+        /// </summary>
+        private void UpdateShootDirectionIsaacStyle()
+        {
+            TryRegisterShoot(InputAction.ShootLeft);
+            TryRegisterShoot(InputAction.ShootRight);
+            TryRegisterShoot(InputAction.ShootUp);
+            TryRegisterShoot(InputAction.ShootDown);
+
+            TryUnregisterShoot(InputAction.ShootLeft);
+            TryUnregisterShoot(InputAction.ShootRight);
+            TryUnregisterShoot(InputAction.ShootUp);
+            TryUnregisterShoot(InputAction.ShootDown);
+
+            if (_shootPressOrder.Count > 0)
+                ShootDirection = ToCardinal(_shootPressOrder[0]);
+        }
+
+        private void TryRegisterShoot(InputAction action)
+        {
+            if (!_inputService.IsActionPressed(action))
+                return;
+            if (!_shootPressOrder.Contains(action))
+                _shootPressOrder.Add(action);
+        }
+
+        private void TryUnregisterShoot(InputAction action)
+        {
+            if (!_inputService.IsActionUp(action))
+                return;
+            _shootPressOrder.Remove(action);
+        }
+
+        private static Vector2 ToCardinal(InputAction action)
+        {
+            return action switch
+            {
+                InputAction.ShootLeft => new Vector2(-1f, 0f),
+                InputAction.ShootRight => new Vector2(1f, 0f),
+                InputAction.ShootUp => new Vector2(0f, -1f),
+                InputAction.ShootDown => new Vector2(0f, 1f),
+                _ => Vector2.Zero
+            };
         }
     }
 }
