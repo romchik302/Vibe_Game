@@ -37,12 +37,22 @@ namespace Vibe_Game.Core.Settings
     /// <summary>��������� ������ �� ��������� (����� �������������� � �������������).</summary>
     public static class EnemyConfig
     {
-        public const int DefaultFlyingRadius = 10;
+        public const int DefaultFlyingRadius = 8;
         public const float DefaultFlyingMoveSpeed = 100f;
-        public const int DefaultFlyingMaxHealth = 1;
-
-        /// <summary>����������� ������ ��������� ����� � ���������� ������� (0..1).</summary>
+        public const int DefaultFlyingMaxHealth = 5;
         public const float FlyingSpawnChancePerRoom = 0.45f;
+
+        public const int DefaultChasingRadius = 12;
+        public const float DefaultChasingMoveSpeed = 80f;
+        public const int DefaultChasingMaxHealth = 8;
+        public const float ChasingSpawnChancePerRoom = 0.35f;
+
+        public const float AdaptiveChasingMoveSpeed = 100f;        // Чуть быстрее обычного преследующего
+        public const int AdaptiveChasingMaxHealth = 20;            // Покрепче
+        public const float AdaptiveChasingRadius = 15f;            // Чуть больше хитбокс
+        public const float AdaptiveChasingInitialRadius = 90f;    // Начальный радиус преследования (небольшой)
+        public const float AdaptiveChasingExpandedRadius = 140f;   // Расширенный радиус (значительно больше)
+        public const float AdaptiveChasingSpawnChance = 0.3f;      // Шанс спавна (реже)
     }
 
     // ������� ����

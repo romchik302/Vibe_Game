@@ -51,7 +51,11 @@ namespace Vibe_Game.Scenes
             _floorMap = _levelGenerator.GenerateFloor(1);
 
             _flyingCollision = new SceneFlyingCollision(this);
+            var wallCollision = new SceneWallCollision(this);
+
             SpawnFlyingEnemiesInRooms(floorIndex: 1);
+            SpawnChasingEnemiesInRooms(floorIndex: 1, wallCollision);
+            SpawnAdaptiveChasingEnemiesInRooms(floorIndex: 1, wallCollision);
 
             _currentRoomGrid = new Point(WorldConfig.CenterGrid, WorldConfig.CenterGrid);
 
@@ -130,8 +134,64 @@ namespace Vibe_Game.Scenes
             }
         }
 
+        private void SpawnChasingEnemiesInRooms(int floorIndex, IWallCollisionChecker wallCollision)
+        {
+            var rng = new Random(unchecked(floorIndex * 397 ^ 0x5EED));
+
+            for (int gx = 0; gx < WorldConfig.GridSize; gx++)
+            {
+                for (int gy = 0; gy < WorldConfig.GridSize; gy++)
+                {
+                    Room room = _floorMap[gx, gy];
+                    if (room == null || room.Type == LevelGenerator.RoomType.Start)
+                        continue;
+
+                    if (rng.NextDouble() > EnemyConfig.ChasingSpawnChancePerRoom)
+                        continue;
+
+                    int enemyCount = rng.Next(1, 4);
+
+                    for (int i = 0; i < enemyCount; i++)
+                    {
+                        Vector2 spawnWorld = GetRandomFreeTilePosition(room, gx, gy, rng);
+                        room.enemies.Add(new ChasingEnemy(spawnWorld, wallCollision)); // Используем wallCollision
+                    }
+                }
+            }
+        }
+
+        private void SpawnAdaptiveChasingEnemiesInRooms(int floorIndex, IWallCollisionChecker wallCollision)
+        {
+            var rng = new Random(unchecked(floorIndex * 397 ^ 0x5EED));
+
+            for (int gx = 0; gx < WorldConfig.GridSize; gx++)
+            {
+                for (int gy = 0; gy < WorldConfig.GridSize; gy++)
+                {
+                    Room room = _floorMap[gx, gy];
+                    if (room == null || room.Type == LevelGenerator.RoomType.Start)
+                        continue;
+
+                    // Меньший шанс спавна адаптивного врага
+                    if (rng.NextDouble() > EnemyConfig.AdaptiveChasingSpawnChance)
+                        continue;
+
+                    // Спавним 1-2 адаптивных врага (они сильнее)
+                    int enemyCount = rng.Next(1, 3);
+
+                    for (int i = 0; i < enemyCount; i++)
+                    {
+                        Vector2 spawnWorld = GetRandomFreeTilePosition(room, gx, gy, rng);
+                        room.enemies.Add(new AdaptiveChasingEnemy(spawnWorld, wallCollision));
+                    }
+                }
+            }
+        }
+
         private void UpdateEnemies(GameTime gameTime)
         {
+            Rectangle playerBounds = _player.GetBounds(); // Нужно добавить метод GetBounds() в класс Player
+
             for (int x = 0; x < WorldConfig.GridSize; x++)
             {
                 for (int y = 0; y < WorldConfig.GridSize; y++)
@@ -143,8 +203,20 @@ namespace Vibe_Game.Scenes
                     {
                         Enemy enemy = room.enemies[i];
 
+                        // Обновляем цель для всех типов врагов
                         if (enemy is FlyingEnemy flying)
                             flying.ChaseTarget = _player.Position;
+                        else if (enemy is ChasingEnemy chasing)
+                            chasing.ChaseTarget = _player.Position;
+                        else if (enemy is AdaptiveChasingEnemy adaptive)
+                        {
+                            adaptive.ChaseTarget = _player.Position;
+                            // Для адаптивного врага можно проверять коллизию с игроком
+                            if (adaptive.GetBounds().Intersects(playerBounds))
+                            {
+                                // Радиус увеличится автоматически внутри UpdateEnemy
+                            }
+                        }
 
                         enemy.Update(gameTime);
 
@@ -185,6 +257,36 @@ namespace Vibe_Game.Scenes
                 return false;
 
             return IsPointWall(room, lx, ly);
+        }
+
+        /// <summary>
+        /// Проверяет коллизию со ВСЕМИ стенами (включая внутренние)
+        /// </summary>
+        private bool IsPointBlockedByAllWalls(Vector2 worldPosition)
+        {
+            int rx = (int)Math.Floor(worldPosition.X / WorldConfig.RoomWidthPx);
+            int ry = (int)Math.Floor(worldPosition.Y / WorldConfig.RoomHeightPx);
+            Point roomGrid = new Point(
+                Math.Clamp(rx, 0, WorldConfig.GridSize - 1),
+                Math.Clamp(ry, 0, WorldConfig.GridSize - 1));
+
+            Room room = _floorMap[roomGrid.X, roomGrid.Y];
+            if (room == null) return true;
+
+            float lx = worldPosition.X % WorldConfig.RoomWidthPx;
+            float ly = worldPosition.Y % WorldConfig.RoomHeightPx;
+            if (lx < 0) lx += WorldConfig.RoomWidthPx;
+            if (ly < 0) ly += WorldConfig.RoomHeightPx;
+
+            int tx = (int)Math.Floor(lx / WorldConfig.TileSize);
+            int ty = (int)Math.Floor(ly / WorldConfig.TileSize);
+
+            // Проверяем, не вышел ли за границы комнаты
+            if (tx < 0 || tx >= WorldConfig.RoomWidthTiles || ty < 0 || ty >= WorldConfig.RoomHeightTiles)
+                return true;
+
+            // Внутренние стены тоже считаются препятствием
+            return room.Tiles[tx, ty] == TileType.Wall;
         }
 
         private void CheckTileCollision(Vector2 oldPos)
@@ -708,6 +810,15 @@ namespace Vibe_Game.Scenes
 
             public bool IsFlyingBlocked(Vector2 worldPosition)
                 => _owner.IsFlyingPointBlocked(worldPosition);
+        }
+        private sealed class SceneWallCollision : IWallCollisionChecker
+        {
+            private readonly GameScene _owner;
+
+            public SceneWallCollision(GameScene owner) => _owner = owner;
+
+            public bool IsPointBlockedByWall(Vector2 worldPosition)
+                => _owner.IsPointBlockedByAllWalls(worldPosition);
         }
     }
 }
