@@ -71,6 +71,11 @@ namespace Vibe_Game.Gameplay.Entities.Player
                 }
             }
 
+            if (EquippedWeapon is SwordWeapon sword)
+            {
+                sword.UpdateOwnerPosition(Position);
+            }
+
             Velocity = Controller.CurrentVelocity;
             base.Update(gameTime);
         }

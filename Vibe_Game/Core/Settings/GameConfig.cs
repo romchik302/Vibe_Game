@@ -39,7 +39,7 @@ namespace Vibe_Game.Core.Settings
     {
         public const int DefaultFlyingRadius = 10;
         public const float DefaultFlyingMoveSpeed = 100f;
-        public const int DefaultFlyingMaxHealth = 4;
+        public const int DefaultFlyingMaxHealth = 1;
 
         /// <summary>����������� ������ ��������� ����� � ���������� ������� (0..1).</summary>
         public const float FlyingSpawnChancePerRoom = 0.45f;
