@@ -72,7 +72,16 @@ namespace Vibe_Game.Scenes
             base.Initialize();
         }
 
-        public override void LoadContent() => _player.LoadContent(GameInstance.Content);
+        public override void LoadContent()
+        {
+            // Загружаем спрайт-лист игрока
+            var playerSpriteSheet = GameInstance.Content.Load<Texture2D>("player_sheet");
+
+            // Создаем анимационный рендерер
+            var playerRenderer = new PlayerRenderer(playerSpriteSheet);
+
+            _player.LoadContent(GameInstance.Content);
+        }
 
         public override void Update(GameTime gameTime)
         {

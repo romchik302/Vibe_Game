@@ -19,6 +19,7 @@ namespace Vibe_Game
         private InputService _inputService;
         private PlayerContentLoader _contentLoader;
         private Camera _camera;
+        private Texture2D _playerTexture;
 
         public Game1()
         {
@@ -65,39 +66,41 @@ namespace Vibe_Game
 
         private void InitializeServices()
         {
-            System.Diagnostics.Debug.WriteLine("--- Инициализация сервисов ---");
+            System.Diagnostics.Debug.WriteLine("--- Initialize services ---");
 
-            // 1. SpriteBatch (основной)
+            // 1. SpriteBatch (main)
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             Services.AddService(typeof(SpriteBatch), _spriteBatch);
-            System.Diagnostics.Debug.WriteLine("SpriteBatch создан");
+            System.Diagnostics.Debug.WriteLine("SpriteBatch created");
 
-            // 2. Пиксельная текстура (для рисования)
-            var pixelTexture = new Texture2D(GraphicsDevice, 1, 1);
-            pixelTexture.SetData(new[] { Color.White });
-            Services.AddService(typeof(Texture2D), pixelTexture);
-            System.Diagnostics.Debug.WriteLine("Пиксельная текстура создана");
-
-            // 3. Камера
+            // 2. Camera
             _camera = new Camera(_graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
             Services.AddService(typeof(Camera), _camera);
-            System.Diagnostics.Debug.WriteLine($"Камера создана: {_graphics.PreferredBackBufferWidth}x{_graphics.PreferredBackBufferHeight}");
+            System.Diagnostics.Debug.WriteLine($"Camera created: {_graphics.PreferredBackBufferWidth}x{_graphics.PreferredBackBufferHeight}");
 
-            // 4. InputManager
+            // 3. InputManager
             _inputService = new InputService(new DefaultInputBindings());
             Services.AddService(typeof(InputService), _inputService);
-            System.Diagnostics.Debug.WriteLine("InputManager создан");
+            System.Diagnostics.Debug.WriteLine("InputManager created");
 
-            // 5. SceneManager (ПОСЛЕДНИМ!)
+            // 4. SceneManager (LAST!)
             Services.AddService(typeof(SceneManager), _sceneManager);
-            System.Diagnostics.Debug.WriteLine("SceneManager создан");
+            System.Diagnostics.Debug.WriteLine("SceneManager created");
 
-            System.Diagnostics.Debug.WriteLine("--- Все сервисы инициализированы ---");
+            System.Diagnostics.Debug.WriteLine("--- All services initialized ---");
         }
 
         protected override void LoadContent()
         {
             System.Diagnostics.Debug.WriteLine("=== LoadContent начат ===");
+
+            // 1. Загрузить контент через PlayerContentLoader
+            _contentLoader.LoadContent(Content);
+            _playerTexture = _contentLoader.PlayerTexture;
+            System.Diagnostics.Debug.WriteLine("Текстура игрока загружена");
+
+            // 2. Сохранить текстуру в сервисах для доступа из других мест
+            Services.AddService(typeof(Texture2D), _playerTexture);
 
             // Проверяем состояние
             System.Diagnostics.Debug.WriteLine($"GraphicsDevice: {GraphicsDevice != null}");
@@ -143,8 +146,11 @@ namespace Vibe_Game
 
             try
             {
-                // Создаём игровую сцену
-                var gameScene = new GameScene(this, new PlayerRenderer(), _inputService, _contentLoader);
+                // СОЗДАЁМ РЕНДЕРЕР С ТЕКСТУРОЙ
+                var playerRenderer = new PlayerRenderer(_playerTexture);
+
+                // Создаём игровую сцену с новым рендерером
+                var gameScene = new GameScene(this, playerRenderer, _inputService, _contentLoader);
                 _sceneManager.AddScene("game", gameScene);
                 System.Diagnostics.Debug.WriteLine("GameScene создана");
 

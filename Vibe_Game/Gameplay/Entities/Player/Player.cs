@@ -1,3 +1,4 @@
+// Gameplay/Entities/Player/Player.cs (дополнения)
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -20,6 +21,9 @@ namespace Vibe_Game.Gameplay.Entities.Player
 
         private Vector2 _lastShootDirection;
 
+        // Для анимации
+        private PlayerRenderer _animationRenderer; // Приведение типа для доступа к Update
+
         public Player(
             Vector2 position,
             IPlayerRenderer renderer,
@@ -38,6 +42,9 @@ namespace Vibe_Game.Gameplay.Entities.Player
             Stats = new PlayerStats();
 
             Color = Color.White;
+
+            // Сохраняем ссылку на анимационный рендерер, если он используется
+            _animationRenderer = renderer as PlayerRenderer;
         }
 
         public override void LoadContent(ContentManager content)
@@ -77,6 +84,13 @@ namespace Vibe_Game.Gameplay.Entities.Player
             }
 
             Velocity = Controller.CurrentVelocity;
+
+            // ОБНОВЛЯЕМ АНИМАЦИЮ
+            if (_animationRenderer != null)
+            {
+                _animationRenderer.Update(gameTime, Velocity, _lastShootDirection);
+            }
+
             base.Update(gameTime);
         }
 
