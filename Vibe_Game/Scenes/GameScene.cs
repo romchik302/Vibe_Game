@@ -62,12 +62,7 @@ namespace Vibe_Game.Scenes
 
             _attackContext = new SceneAttackContext(this);
             _player = new Player(startPos, _playerRenderer, _inputService, _contentLoader, _attackContext);
-            _player.EquippedWeapon = new ForwardProjectileWeapon(
-                cooldownSeconds: 0.3f,
-                projectileSpeed: 250f,
-                damage: 1,
-                spawnOffsetPixels: 20f,
-                lifetimeSeconds: 1f);
+            _player.EquippedWeapon = new SwordWeapon();
             _cameraPosition = startPos;
 
             base.Initialize();
@@ -491,6 +486,12 @@ namespace Vibe_Game.Scenes
             }
 
             _player.Draw(sb);
+#if DEBUG
+            if (_player.EquippedWeapon is SwordWeapon sword)
+            {
+                sword.Draw(sb, _attackContext);
+            }
+#endif
             sb.End();
 
             sb.Begin(samplerState: SamplerState.PointClamp);
@@ -592,15 +593,111 @@ namespace Vibe_Game.Scenes
             }
 
             public void Sync(GameTime gameTime) => _gameTime = gameTime;
-
             public GameTime GameTime => _gameTime;
-
             public SpriteBatch SpriteBatch => null;
 
-            public void SpawnProjectile(ProjectileSpawnArgs args) => _owner.SpawnProjectileFromArgs(args);
+            public void SpawnProjectile(ProjectileSpawnArgs args)
+                => _owner.SpawnProjectileFromArgs(args);
 
             public bool WouldCollideAtWorld(Vector2 worldPosition, float collisionRadius)
                 => _owner.IsWorldPointBlocked(worldPosition);
+
+            // НОВАЯ РЕАЛИЗАЦИЯ
+            public void DamageEnemiesInArea(Vector2 center, float radius, int damage)
+            {
+                // Определяем комнату, в которой находится центр атаки
+                int rx = (int)(center.X / WorldConfig.RoomWidthPx);
+                int ry = (int)(center.Y / WorldConfig.RoomHeightPx);
+
+                rx = Math.Clamp(rx, 0, WorldConfig.GridSize - 1);
+                ry = Math.Clamp(ry, 0, WorldConfig.GridSize - 1);
+
+                Room room = _owner._floorMap[rx, ry];
+                if (room?.enemies == null) return;
+
+                // Наносим урон всем врагам в радиусе
+                for (int i = room.enemies.Count - 1; i >= 0; i--)
+                {
+                    Enemy enemy = room.enemies[i];
+                    if (!enemy.IsAlive) continue;
+
+                    float distance = Vector2.Distance(center, enemy.Position);
+                    if (distance <= radius)
+                    {
+                        enemy.TakeDamage(damage);
+
+                        // Добавляем визуальный эффект попадания
+                        // _owner.SpawnHitEffect(enemy.Position);
+                    }
+                }
+            }
+            public object GetEnemyAtPoint(Vector2 point, float radius)
+            {
+                int rx = (int)(point.X / WorldConfig.RoomWidthPx);
+                int ry = (int)(point.Y / WorldConfig.RoomHeightPx);
+
+                rx = Math.Clamp(rx, 0, WorldConfig.GridSize - 1);
+                ry = Math.Clamp(ry, 0, WorldConfig.GridSize - 1);
+
+                Room room = _owner._floorMap[rx, ry];
+                if (room?.enemies == null) return null;
+
+                foreach (var enemy in room.enemies)
+                {
+                    if (!enemy.IsAlive) continue;
+
+                    float distance = Vector2.Distance(point, enemy.Position);
+                    if (distance <= radius)
+                    {
+                        return enemy;
+                    }
+                }
+
+                return null;
+            }
+
+            public void DamageEnemy(object enemy, int damage)
+            {
+                if (enemy is Enemy e && e.IsAlive)
+                {
+                    e.TakeDamage(damage);
+                }
+            }
+            public List<object> GetEnemiesInArea(Rectangle bounds)
+            {
+                List<object> result = new List<object>();
+
+                // Проверяем все комнаты, которые пересекаются с bounds
+                int startX = Math.Max(0, (int)(bounds.Left / WorldConfig.RoomWidthPx));
+                int endX = Math.Min(WorldConfig.GridSize - 1, (int)(bounds.Right / WorldConfig.RoomWidthPx));
+                int startY = Math.Max(0, (int)(bounds.Top / WorldConfig.RoomHeightPx));
+                int endY = Math.Min(WorldConfig.GridSize - 1, (int)(bounds.Bottom / WorldConfig.RoomHeightPx));
+
+                for (int x = startX; x <= endX; x++)
+                {
+                    for (int y = startY; y <= endY; y++)
+                    {
+                        Room room = _owner._floorMap[x, y];
+                        if (room?.enemies == null) continue;
+
+                        foreach (var enemy in room.enemies)
+                        {
+                            if (!enemy.IsAlive) continue;
+
+                            Rectangle enemyBounds = enemy.GetBounds();
+                            if (bounds.Intersects(enemyBounds))
+                            {
+                                result.Add(enemy);
+                            }
+                        }
+                    }
+                }
+
+                return result;
+            }
+            public Vector2 GetPlayerPosition() => _owner._player.Position;
+
+            public Vector2 GetCameraPosition() => _owner._cameraPosition;
         }
 
         private sealed class SceneFlyingCollision : IFlyingCollisionChecker
