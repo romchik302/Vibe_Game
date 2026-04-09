@@ -11,8 +11,9 @@ public sealed class Projectile : Entity
     public float Damage { get; }
     public float LifeLeft { get; private set; }
     public float Radius {  get; private set; }
+    public float RecoilForce { get; }  // Сила отдачи при попадании
 
-    public Projectile(Vector2 position, Vector2 direction, float speed, float damage, float lifetimeSeconds, float radius)
+    public Projectile(Vector2 position, Vector2 direction, float speed, float damage, float lifetimeSeconds, float radius, float recoilForce = 0f)
     {
         Position = position;
         Direction = Vector2.Normalize(direction);
@@ -21,6 +22,7 @@ public sealed class Projectile : Entity
         LifeLeft = lifetimeSeconds;
         Velocity = Direction * speed;
         Radius = radius;
+        RecoilForce = recoilForce;
     }
 
     public override void Update(GameTime gameTime)

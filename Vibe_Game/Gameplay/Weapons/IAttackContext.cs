@@ -13,6 +13,7 @@ public interface IAttackContext
     void DamageEnemiesInArea(Vector2 center, float radius, int damage);
     object GetEnemyAtPoint(Vector2 point, float radius);
     void DamageEnemy(object enemy, int damage);
+    void ApplyRecoilToEnemy(object enemy, Vector2 recoilDirection, float recoilForce);
     Vector2 GetPlayerPosition();
     Vector2 GetCameraPosition();
 

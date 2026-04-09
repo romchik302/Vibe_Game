@@ -19,6 +19,13 @@ namespace Vibe_Game.Gameplay.Entities.Player
         public float DamageMultiplier { get; set; } = 1.0f;
         public float SpeedMultiplier { get; set; } = 1.0f;
 
+        public void TakeDamage(float amount)
+        {
+            if (amount <= 0) return;
+            Health -= amount;
+            if (Health < 0) Health = 0;
+        }
+
         public void ApplyItemEffect(ItemEffect effect)
         {
             // TODO: Применение эффектов предметов

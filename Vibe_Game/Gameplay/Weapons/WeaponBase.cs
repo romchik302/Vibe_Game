@@ -9,6 +9,9 @@ public abstract class WeaponBase : IWeapon
 
     public virtual WeaponFireMode FireMode => WeaponFireMode.AutoWhileDirectionHeld;
 
+    /// <summary>Базовая отдача оружия (сила толчка в обратную сторону от направления атаки).</summary>
+    public virtual float BaseRecoil => 0f;
+
     private float _cooldownRemaining;
 
     protected float CooldownSeconds { get; set; }

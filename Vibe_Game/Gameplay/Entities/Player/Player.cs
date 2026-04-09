@@ -24,6 +24,10 @@ namespace Vibe_Game.Gameplay.Entities.Player
         // Для анимации
         private PlayerRenderer _animationRenderer; // Приведение типа для доступа к Update
 
+        // Таймер неуязвимости после получения урона (в секундах)
+        private float _invincibilityTimer = 0f;
+        private const float InvincibilityDuration = 1.0f;
+
         public Player(
             Vector2 position,
             IPlayerRenderer renderer,
@@ -85,6 +89,19 @@ namespace Vibe_Game.Gameplay.Entities.Player
 
             Velocity = Controller.CurrentVelocity;
 
+            // ОБНОВЛЯЕМ ТАЙМЕР НЕУЯЗВИМОСТИ
+            if (_invincibilityTimer > 0)
+            {
+                _invincibilityTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+                if (_invincibilityTimer < 0) _invincibilityTimer = 0;
+            }
+            else
+            {
+                // Возвращаем нормальный цвет после окончания неуязвимости
+                if (Color == Color.Red)
+                    Color = Color.White;
+            }
+
             // ОБНОВЛЯЕМ АНИМАЦИЮ
             if (_animationRenderer != null)
             {
@@ -108,6 +125,20 @@ namespace Vibe_Game.Gameplay.Entities.Player
                 PlayerConfig.Size
             );
         }
+
+        public void TakeDamage(float amount)
+        {
+            if (_invincibilityTimer > 0) return; // Игрок неуязвим
+            if (amount <= 0) return;
+
+            Stats.TakeDamage(amount);
+            _invincibilityTimer = InvincibilityDuration;
+
+            // Визуальный эффект - мигание красным (можно добавить в рендерер)
+            Color = Color.Red;
+        }
+
+        public bool IsInvincible => _invincibilityTimer > 0;
 
         private bool IsAnyShootDirectionHeld()
         {

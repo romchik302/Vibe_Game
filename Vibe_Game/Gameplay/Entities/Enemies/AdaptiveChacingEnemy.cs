@@ -26,6 +26,7 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
         _initialChaseRadius = initialChaseRadius;
         _expandedChaseRadius = expandedChaseRadius;
         _currentChaseRadius = initialChaseRadius;
+        RecoilResistance = 0.8f;  // Тяжело отскакивает (80% сопротивление)
     }
 
     public AdaptiveChasingEnemy(Vector2 position, IWallCollisionChecker collision)

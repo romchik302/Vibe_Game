@@ -26,6 +26,7 @@ public class ChasingEnemy : Enemy
         _moveSpeed = moveSpeed;
         _collisionRadius = collisionRadius;
         Color = Color.White;
+        RecoilResistance = 0.7f;  // Средне отскакивает (50% сопротивление)
     }
 
     /// <summary>Удобный конструктор с константами из <see cref="EnemyConfig"/>.</summary>
@@ -37,6 +38,17 @@ public class ChasingEnemy : Enemy
             EnemyConfig.DefaultChasingMaxHealth,
             EnemyConfig.DefaultChasingRadius)
     {
+    }
+
+    protected override Vector2 ResolveRecoilCollision(Vector2 oldPos, Vector2 newPos)
+    {
+        Vector2 delta = newPos - oldPos;
+        return ResolveWallCollision(oldPos, delta);
+    }
+
+    protected override float GetCollisionRadius()
+    {
+        return _collisionRadius;
     }
 
     protected override void UpdateEnemy(GameTime gameTime)

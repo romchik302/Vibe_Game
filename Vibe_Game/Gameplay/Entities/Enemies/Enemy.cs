@@ -12,8 +12,20 @@ public abstract class Enemy : Entity
     public int Health { get; set; }
     public int MaxHealth { get; protected set; }
 
+    /// <summary>Сопротивление отдаче (0.0 = полная отдача, 1.0 = не отталкивается).</summary>
+    public float RecoilResistance { get; protected set; } = 0f;
+
+    /// <summary>Радиус врезания в игрока (на какое расстояние враг может зайти в игрока).</summary>
+    public float PenetrationRadius { get; protected set; } = 0f;
+
     /// <summary>Пока false — AI и движение не крутятся (враг «спит» до входа игрока в комнату).</summary>
     public bool IsActivated { get; private set; }
+
+    /// <summary>Velocity отдачи (плавное отталкивание).</summary>
+    private Vector2 _recoilVelocity = Vector2.Zero;
+
+    /// <summary>Коэффициент затухания отдачи (чем меньше, тем дольше длится отдача).</summary>
+    private const float RecoilDamping = 0.85f;
 
     protected Enemy(Vector2 position, int maxHealth)
     {
@@ -51,16 +63,59 @@ public abstract class Enemy : Entity
         }
     }
 
+    /// <summary>Применить отдачу от оружия (толчок в направлении).</summary>
+    public virtual void ApplyRecoil(Vector2 recoilDirection, float recoilForce)
+    {
+        if (!IsAlive || !IsActivated)
+            return;
+
+        // Учитываем сопротивление отдаче
+        float effectiveForce = recoilForce * (1.0f - RecoilResistance);
+        if (effectiveForce <= 0)
+            return;
+
+        // Добавляем отдачу к velocity (плавное отталкивание)
+        _recoilVelocity += recoilDirection * effectiveForce;
+    }
+
     public override void Update(GameTime gameTime)
     {
         if (!IsAlive || !IsActivated)
             return;
 
+        // Применяем velocity отдачи
+        if (_recoilVelocity != Vector2.Zero)
+        {
+            Vector2 oldPos = Position;
+            Position += _recoilVelocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Проверяем коллизию со стенами при отдаче
+            Position = ResolveRecoilCollision(oldPos, Position);
+
+            _recoilVelocity *= RecoilDamping; // Затухание
+
+            // Останавливаем если очень маленькая скорость
+            if (_recoilVelocity.LengthSquared() < 0.01f)
+                _recoilVelocity = Vector2.Zero;
+        }
+
         UpdateEnemy(gameTime);
+    }
+
+    /// <summary>Проверяет коллизию со стенами при отдаче и возвращает скорректированную позицию.</summary>
+    protected virtual Vector2 ResolveRecoilCollision(Vector2 oldPos, Vector2 newPos)
+    {
+        return newPos; // По умолчанию без проверки
     }
 
     /// <summary>Движение и AI конкретного типа врага.</summary>
     protected abstract void UpdateEnemy(GameTime gameTime);
+
+    /// <summary>Возвращает радиус коллизии врага для проверки стен.</summary>
+    protected virtual float GetCollisionRadius()
+    {
+        return 10f;
+    }
 
     public override void Draw(SpriteBatch spriteBatch)
     {

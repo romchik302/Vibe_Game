@@ -199,7 +199,7 @@ namespace Vibe_Game.Scenes
 
         private void UpdateEnemies(GameTime gameTime)
         {
-            Rectangle playerBounds = _player.GetBounds(); // Нужно добавить метод GetBounds() в класс Player
+            Rectangle playerBounds = _player.GetBounds();
 
             for (int x = 0; x < WorldConfig.GridSize; x++)
             {
@@ -220,10 +220,47 @@ namespace Vibe_Game.Scenes
                         else if (enemy is AdaptiveChasingEnemy adaptive)
                         {
                             adaptive.ChaseTarget = _player.Position;
-                            // Для адаптивного врага можно проверять коллизию с игроком
-                            if (adaptive.GetBounds().Intersects(playerBounds))
+                        }
+
+                        // Проверка коллизии с игроком для нанесения урона и физического отталкивания врага
+                        if (enemy.GetBounds().Intersects(playerBounds))
+                        {
+                            _player.TakeDamage(1.0f);
+
+                            // Физическая коллизия - игрок толкает врагов и испытывает сопротивление
+                            Vector2 toEnemy = enemy.Position - _player.Position;
+                            float distance = toEnemy.Length();
+                            if (distance > 0.001f)
                             {
-                                // Радиус увеличится автоматически внутри UpdateEnemy
+                                toEnemy.Normalize();
+
+                                float playerRadius = PlayerConfig.Radius;
+                                float enemyRadius = GetEnemyRadius(enemy);
+                                float minDistance = playerRadius + enemyRadius - enemy.PenetrationRadius;
+
+                                if (distance < minDistance)
+                                {
+                                    Vector2 pushDir = toEnemy;
+                                    float pushAmount = minDistance - distance;
+
+                                    // Сохраняем старые позиции для проверки коллизий
+                                    Vector2 oldEnemyPos = enemy.Position;
+                                    Vector2 oldPlayerPos = _player.Position;
+
+                                    // Коэффициент отталкивания врагов (уменьшен)
+                                    const float enemyPushCoefficient = 0.2f;
+                                    enemy.Position += pushDir * pushAmount * enemyPushCoefficient;
+
+                                    // Проверяем коллизию врага со стенами после толчка
+                                    enemy.Position = ResolveEnemyWallCollision(enemy, oldEnemyPos, enemy.Position);
+
+                                    // Игрок испытывает сопротивление (отталкивается в обратную сторону)
+                                    const float playerResistanceCoefficient = 0.1f;
+                                    _player.Position -= pushDir * pushAmount * playerResistanceCoefficient;
+
+                                    // Проверяем коллизию игрока со стенами после толчка
+                                    CheckTileCollision(oldPlayerPos);
+                                }
                             }
                         }
 
@@ -232,8 +269,121 @@ namespace Vibe_Game.Scenes
                         if (!enemy.IsAlive)
                             room.enemies.RemoveAt(i);
                     }
+
+                    // Коллизия враг-враг (проверяем после обновления всех врагов)
+                    for (int j = 0; j < room.enemies.Count; j++)
+                    {
+                        for (int k = j + 1; k < room.enemies.Count; k++)
+                        {
+                            Enemy enemy1 = room.enemies[j];
+                            Enemy enemy2 = room.enemies[k];
+
+                            if (!enemy1.IsAlive || !enemy2.IsAlive)
+                                continue;
+
+                            Rectangle bounds1 = enemy1.GetBounds();
+                            Rectangle bounds2 = enemy2.GetBounds();
+
+                            if (bounds1.Intersects(bounds2))
+                            {
+                                // Отталкиваем врагов друг от друга
+                                Vector2 toEnemy2 = enemy2.Position - enemy1.Position;
+                                float distance = toEnemy2.Length();
+                                if (distance > 0.001f)
+                                {
+                                    toEnemy2.Normalize();
+
+                                    float radius1 = GetEnemyRadius(enemy1);
+                                    float radius2 = GetEnemyRadius(enemy2);
+                                    float minDistance = radius1 + radius2 - enemy1.PenetrationRadius - enemy2.PenetrationRadius;
+
+                                    if (distance < minDistance)
+                                    {
+                                        Vector2 pushDir = toEnemy2;
+                                        float pushAmount = (minDistance - distance) * 0.5f; // Поровну делим
+
+                                        // Сохраняем старые позиции для проверки коллизий
+                                        Vector2 oldPos1 = enemy1.Position;
+                                        Vector2 oldPos2 = enemy2.Position;
+
+                                        enemy1.Position -= pushDir * pushAmount;
+                                        enemy2.Position += pushDir * pushAmount;
+
+                                        // Проверяем коллизию врагов со стенами после толчка
+                                        enemy1.Position = ResolveEnemyWallCollision(enemy1, oldPos1, enemy1.Position);
+                                        enemy2.Position = ResolveEnemyWallCollision(enemy2, oldPos2, enemy2.Position);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
+        }
+
+        private float GetEnemyRadius(Enemy enemy)
+        {
+            if (enemy is FlyingEnemy) return EnemyConfig.DefaultFlyingRadius;
+            if (enemy is ChasingEnemy) return EnemyConfig.DefaultChasingRadius;
+            if (enemy is AdaptiveChasingEnemy) return EnemyConfig.DefaultChasingRadius;
+            return 10f;
+        }
+
+        /// <summary>Проверяет коллизию врага со стенами и возвращает скорректированную позицию.</summary>
+        private Vector2 ResolveEnemyWallCollision(Enemy enemy, Vector2 oldPos, Vector2 newPos)
+        {
+            Vector2 delta = newPos - oldPos;
+            Vector2 finalPos = newPos;
+
+            float radius = GetEnemyRadius(enemy);
+
+            // Проверяем движение по оси X
+            if (delta.X != 0f)
+            {
+                bool isBlocked = false;
+                if (enemy is FlyingEnemy)
+                {
+                    isBlocked = IsFlyingPointBlocked(new Vector2(newPos.X, oldPos.Y)) ||
+                               IsFlyingPointBlocked(new Vector2(newPos.X + radius, oldPos.Y)) ||
+                               IsFlyingPointBlocked(new Vector2(newPos.X - radius, oldPos.Y));
+                }
+                else
+                {
+                    isBlocked = IsPointBlockedByAllWalls(new Vector2(newPos.X, oldPos.Y)) ||
+                               IsPointBlockedByAllWalls(new Vector2(newPos.X + radius, oldPos.Y)) ||
+                               IsPointBlockedByAllWalls(new Vector2(newPos.X - radius, oldPos.Y));
+                }
+
+                if (isBlocked)
+                {
+                    finalPos.X = oldPos.X;
+                }
+            }
+
+            // Проверяем движение по оси Y (используя уже исправленный X)
+            if (delta.Y != 0f)
+            {
+                bool isBlocked = false;
+                if (enemy is FlyingEnemy)
+                {
+                    isBlocked = IsFlyingPointBlocked(new Vector2(finalPos.X, newPos.Y)) ||
+                               IsFlyingPointBlocked(new Vector2(finalPos.X, newPos.Y + radius)) ||
+                               IsFlyingPointBlocked(new Vector2(finalPos.X, newPos.Y - radius));
+                }
+                else
+                {
+                    isBlocked = IsPointBlockedByAllWalls(new Vector2(finalPos.X, newPos.Y)) ||
+                               IsPointBlockedByAllWalls(new Vector2(finalPos.X, newPos.Y + radius)) ||
+                               IsPointBlockedByAllWalls(new Vector2(finalPos.X, newPos.Y - radius));
+                }
+
+                if (isBlocked)
+                {
+                    finalPos.Y = oldPos.Y;
+                }
+            }
+
+            return finalPos;
         }
 
         /// <summary>
@@ -417,7 +567,8 @@ namespace Vibe_Game.Scenes
                 args.Speed,
                 args.Damage,
                 args.LifetimeSeconds,
-                args.Radius
+                args.Radius,
+                args.RecoilForce
             ));
         }
 
@@ -462,6 +613,13 @@ namespace Vibe_Game.Scenes
                         if (p.GetBounds().Intersects(enemy.GetBounds()))
                         {
                             enemy.TakeDamage((int)p.Damage);
+
+                            // Применяем отдачу врагу при попадании проджектайла
+                            if (p.RecoilForce > 0)
+                            {
+                                enemy.ApplyRecoil(p.Direction, p.RecoilForce);
+                            }
+
                             p.IsAlive = false;
                             break;
                         }
@@ -774,6 +932,15 @@ namespace Vibe_Game.Scenes
                     e.TakeDamage(damage);
                 }
             }
+
+            public void ApplyRecoilToEnemy(object enemy, Vector2 recoilDirection, float recoilForce)
+            {
+                if (enemy is Enemy e && e.IsAlive)
+                {
+                    e.ApplyRecoil(recoilDirection, recoilForce);
+                }
+            }
+
             public List<object> GetEnemiesInArea(Rectangle bounds)
             {
                 List<object> result = new List<object>();

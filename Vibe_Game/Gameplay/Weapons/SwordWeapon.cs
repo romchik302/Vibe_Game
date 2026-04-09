@@ -10,6 +10,10 @@ public sealed class SwordWeapon : WeaponBase
 {
     public override WeaponFireMode FireMode => WeaponFireMode.DirectionHeldPlusButtonPress;
 
+    /// <summary>Базовая отдача меча (сила толчка врага при ударе).</summary>
+    public override float BaseRecoil => _recoilForce;
+
+    private float _recoilForce;  // Сила отдачи
     private readonly int _damage;
     private float _swordLength;     // Длина меча
     private float _swordWidth;      // Ширина меча
@@ -50,13 +54,20 @@ public sealed class SwordWeapon : WeaponBase
         get => _damage;
     }
 
+    public float RecoilForce
+    {
+        get => _recoilForce;
+        set => _recoilForce = value;
+    }
+
     public SwordWeapon(
-        int damage = 25,
+        int damage = 5,
         float swordLength = 60f,
         float swordWidth = 10f,
         float attackAngle = MathF.PI / 1.5f,  // 120 градусов
         float attackDuration = 0.12f,         // Длительность анимации
-        float cooldownSeconds = 0.4f)
+        float cooldownSeconds = 0.4f,
+        float recoilForce = 500f)              // Сила отдачи по умолчанию
         : base("Sword", cooldownSeconds)
     {
         _damage = damage;
@@ -64,6 +75,7 @@ public sealed class SwordWeapon : WeaponBase
         _swordWidth = swordWidth;
         _attackAngle = attackAngle;
         _attackDuration = attackDuration;
+        _recoilForce = recoilForce;
     }
 
     public override void Update(GameTime gameTime, IAttackContext context)
@@ -113,6 +125,9 @@ public sealed class SwordWeapon : WeaponBase
             {
                 _hitEnemies.Add(enemy);
                 context.DamageEnemy(enemy, _damage);
+
+                // Применяем отдачу врагу в направлении удара
+                context.ApplyRecoilToEnemy(enemy, _attackDirection, _recoilForce);
             }
         }
     }

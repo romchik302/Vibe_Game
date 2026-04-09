@@ -36,6 +36,7 @@ public class FlyingEnemy : Enemy
         _moveSpeed = moveSpeed;
         _collisionRadius = collisionRadius;
         Color = Color.White;
+        RecoilResistance = 0.1f;  // Легко отскакивает (10% сопротивление)
     }
 
     /// <summary>Удобный конструктор с константами из <see cref="EnemyConfig"/>.</summary>
@@ -47,6 +48,17 @@ public class FlyingEnemy : Enemy
             EnemyConfig.DefaultFlyingMaxHealth,
             EnemyConfig.DefaultFlyingRadius)
     {
+    }
+
+    protected override Vector2 ResolveRecoilCollision(Vector2 oldPos, Vector2 newPos)
+    {
+        Vector2 delta = newPos - oldPos;
+        return ResolveFlyingSlide(oldPos, delta);
+    }
+
+    protected override float GetCollisionRadius()
+    {
+        return _collisionRadius;
     }
 
     protected override void UpdateEnemy(GameTime gameTime)
