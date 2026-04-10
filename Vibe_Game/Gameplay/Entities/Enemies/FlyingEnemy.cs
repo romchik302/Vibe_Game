@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
 using Vibe_Game.Core.Settings;
 
 namespace Vibe_Game.Gameplay.Entities.Enemies;
@@ -16,6 +17,14 @@ public class FlyingEnemy : Enemy
     private readonly float _moveSpeed;
 
     private Texture2D _pixel;
+    private Texture2D _spriteSheet;
+    private Rectangle _sourceRect;
+    private int _frameWidth;
+    private int _frameHeight;
+    private int _frameCount;
+    private int _frameIndex;
+    private float _animTimer;
+    private const float AnimFrameDuration = 0.07f;
 
     /// <summary>Цель преследования в мировых координатах (обычно позиция игрока), обновлять каждый кадр из сцены.</summary>
     public Vector2 ChaseTarget { get; set; }
@@ -48,6 +57,7 @@ public class FlyingEnemy : Enemy
             EnemyConfig.DefaultFlyingMaxHealth,
             EnemyConfig.DefaultFlyingRadius)
     {
+        EnsureSpriteConfigured();
     }
 
     protected override Vector2 ResolveRecoilCollision(Vector2 oldPos, Vector2 newPos)
@@ -63,9 +73,13 @@ public class FlyingEnemy : Enemy
 
     protected override void UpdateEnemy(GameTime gameTime)
     {
+        EnsureSpriteConfigured();
+        UpdateAnimation(gameTime);
+
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         Vector2 toTarget = ChaseTarget - Position;
+        UpdateFacingFromDirection(toTarget, allowVertical: false);
         if (toTarget.LengthSquared() < 2f)
         {
             Velocity = Vector2.Zero;
@@ -117,6 +131,22 @@ public class FlyingEnemy : Enemy
         if (!IsAlive || !IsActivated || spriteBatch == null)
             return;
 
+        if (_spriteSheet != null)
+        {
+            spriteBatch.Draw(
+                _spriteSheet,
+                Position,
+                _sourceRect,
+                Color.White,
+                0f,
+                new Vector2(_frameWidth / 2f, _frameHeight / 2f),
+                1f,
+                GetHorizontalSpriteEffect(),
+                0f
+            );
+            return;
+        }
+
         if (_pixel == null)
         {
             _pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
@@ -125,5 +155,35 @@ public class FlyingEnemy : Enemy
 
         var rect = GetBounds();
         spriteBatch.Draw(_pixel, rect, new Color(200, 80, 200, 230));
+    }
+
+    private void EnsureSpriteConfigured()
+    {
+        if (_spriteSheet != null)
+            return;
+
+        _spriteSheet = SharedFlyingTexture;
+        if (_spriteSheet == null)
+            return;
+
+        _frameHeight = _spriteSheet.Height / 2;
+        _frameWidth = _frameHeight > 0 ? _frameHeight : _spriteSheet.Width / 2;
+        _frameWidth = Math.Clamp(_frameWidth, 1, _spriteSheet.Width);
+        _frameCount = Math.Max(1, _spriteSheet.Width / _frameWidth);
+        _sourceRect = new Rectangle(0, 0, _frameWidth, _frameHeight);
+    }
+
+    private void UpdateAnimation(GameTime gameTime)
+    {
+        if (_spriteSheet == null)
+            return;
+
+        _animTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if (_animTimer < AnimFrameDuration)
+            return;
+
+        _animTimer = 0f;
+        _frameIndex = (_frameIndex + 1) % _frameCount;
+        _sourceRect.X = _frameIndex * _frameWidth;
     }
 }

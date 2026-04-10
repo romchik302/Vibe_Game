@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
 using Vibe_Game.Core.Interfaces;
 using Vibe_Game.Core.Settings;
 
@@ -12,6 +13,14 @@ public class ChasingEnemy : Enemy
     protected readonly float _moveSpeed;
 
     protected Texture2D _pixel;
+    protected Texture2D _spriteSheet;
+    protected Rectangle _sourceRect;
+    protected int _frameWidth;
+    protected int _frameHeight;
+    protected int _frameCount;
+    protected int _frameIndex;
+    protected float _animTimer;
+    protected virtual float AnimFrameDuration => 0.1f;
     public Vector2 ChaseTarget { get; set; }
 
     public ChasingEnemy(
@@ -38,6 +47,7 @@ public class ChasingEnemy : Enemy
             EnemyConfig.DefaultChasingMaxHealth,
             EnemyConfig.DefaultChasingRadius)
     {
+        EnsureSpriteConfigured();
     }
 
     protected override Vector2 ResolveRecoilCollision(Vector2 oldPos, Vector2 newPos)
@@ -53,9 +63,13 @@ public class ChasingEnemy : Enemy
 
     protected override void UpdateEnemy(GameTime gameTime)
     {
+        EnsureSpriteConfigured();
+        UpdateAnimation(gameTime);
+
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         Vector2 toTarget = ChaseTarget - Position;
+        UpdateFacingFromDirection(toTarget, allowVertical: false);
         if (toTarget.LengthSquared() < 2f)
         {
             Velocity = Vector2.Zero;
@@ -113,6 +127,22 @@ public class ChasingEnemy : Enemy
         if (!IsAlive || !IsActivated || spriteBatch == null)
             return;
 
+        if (_spriteSheet != null)
+        {
+            spriteBatch.Draw(
+                _spriteSheet,
+                Position,
+                _sourceRect,
+                Color.White,
+                0f,
+                new Vector2(_frameWidth / 2f, _frameHeight / 2f),
+                1f,
+                GetHorizontalSpriteEffect(),
+                0f
+            );
+            return;
+        }
+
         if (_pixel == null)
         {
             _pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
@@ -122,5 +152,35 @@ public class ChasingEnemy : Enemy
         var rect = GetBounds();
         // Красный цвет для преследующего врага (отличается от фиолетового летающего)
         spriteBatch.Draw(_pixel, rect, new Color(255, 50, 50, 230));
+    }
+
+    protected virtual void EnsureSpriteConfigured()
+    {
+        if (_spriteSheet != null)
+            return;
+
+        _spriteSheet = SharedChasingTexture;
+        if (_spriteSheet == null)
+            return;
+
+        _frameHeight = _spriteSheet.Height;
+        _frameWidth = _frameHeight > 0 ? _frameHeight : _spriteSheet.Width;
+        _frameWidth = Math.Clamp(_frameWidth, 1, _spriteSheet.Width);
+        _frameCount = Math.Max(1, _spriteSheet.Width / _frameWidth);
+        _sourceRect = new Rectangle(0, 0, _frameWidth, _frameHeight);
+    }
+
+    protected void UpdateAnimation(GameTime gameTime)
+    {
+        if (_spriteSheet == null)
+            return;
+
+        _animTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if (_animTimer < AnimFrameDuration)
+            return;
+
+        _animTimer = 0f;
+        _frameIndex = (_frameIndex + 1) % _frameCount;
+        _sourceRect.X = _frameIndex * _frameWidth;
     }
 }

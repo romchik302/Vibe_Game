@@ -8,6 +8,8 @@ namespace Vibe_Game.Gameplay.Entities.Enemies;
 
 internal class AdaptiveChasingEnemy : ChasingEnemy
 {
+    protected override float AnimFrameDuration => 0.08f;
+
     private readonly float _initialChaseRadius;
     private readonly float _expandedChaseRadius;
     private bool _hasPlayerEnteredRadius = false;
@@ -43,6 +45,9 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
 
     protected override void UpdateEnemy(GameTime gameTime)
     {
+        EnsureSpriteConfigured();
+        UpdateAnimation(gameTime);
+
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
         float distanceToPlayer = Vector2.Distance(Position, ChaseTarget);
 
@@ -55,6 +60,7 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
         }
 
         Vector2 toTarget = ChaseTarget - Position;
+        UpdateFacingFromDirection(toTarget, allowVertical: false);
         if (toTarget.LengthSquared() < 2f)
         {
             Velocity = Vector2.Zero;
@@ -81,22 +87,40 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
         if (!IsAlive || !IsActivated || spriteBatch == null)
             return;
 
-        if (_pixel == null)
-        {
-            _pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
-            _pixel.SetData(new[] { Color.White });
-        }
+        EnsureSpriteConfigured();
 
         // Рисуем контур радиуса (очень тонкий, не мешает видеть врага)
 #if DEBUG
         DrawChaseRadiusOutline(spriteBatch);
 #endif
 
-        // Рисуем врага
+        if (_spriteSheet != null)
+        {
+            spriteBatch.Draw(
+                _spriteSheet,
+                Position,
+                _sourceRect,
+                Color.White,
+                0f,
+                new Vector2(_frameWidth / 2f, _frameHeight / 2f),
+                1f,
+                GetHorizontalSpriteEffect(),
+                0f
+            );
+            return;
+        }
+
+        // Fallback при отсутствии текстуры
+        if (_pixel == null)
+        {
+            _pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+            _pixel.SetData(new[] { Color.White });
+        }
+
         var rect = GetBounds();
         Color enemyColor = _hasPlayerEnteredRadius
-            ? new Color(255, 30, 30, 230)   // Ярко-красный после активации
-            : new Color(200, 80, 80, 230);   // Темно-красный до активации
+            ? new Color(255, 30, 30, 230)
+            : new Color(200, 80, 80, 230);
 
         spriteBatch.Draw(_pixel, rect, enemyColor);
     }
@@ -152,4 +176,20 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
 
     public bool HasPlayerEnteredRadius => _hasPlayerEnteredRadius;
     public float CurrentChaseRadius => _currentChaseRadius;
+
+    protected override void EnsureSpriteConfigured()
+    {
+        if (_spriteSheet != null)
+            return;
+
+        _spriteSheet = SharedAdaptiveTexture ?? SharedChasingTexture;
+        if (_spriteSheet == null)
+            return;
+
+        _frameHeight = _spriteSheet.Height;
+        _frameWidth = _frameHeight > 0 ? _frameHeight : _spriteSheet.Width;
+        _frameWidth = Math.Clamp(_frameWidth, 1, _spriteSheet.Width);
+        _frameCount = Math.Max(1, _spriteSheet.Width / _frameWidth);
+        _sourceRect = new Rectangle(0, 0, _frameWidth, _frameHeight);
+    }
 }

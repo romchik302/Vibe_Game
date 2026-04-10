@@ -74,12 +74,7 @@ namespace Vibe_Game.Scenes
 
         public override void LoadContent()
         {
-            // Загружаем спрайт-лист игрока
-            var playerSpriteSheet = GameInstance.Content.Load<Texture2D>("player_sheet");
-
-            // Создаем анимационный рендерер
-            var playerRenderer = new PlayerRenderer(playerSpriteSheet);
-
+            Enemy.LoadSharedTextures(GameInstance.Content);
             _player.LoadContent(GameInstance.Content);
         }
 
@@ -765,6 +760,7 @@ namespace Vibe_Game.Scenes
 
             sb.Begin(samplerState: SamplerState.PointClamp);
             DrawMinimap(sb, pixel);
+            DrawPlayerHealthHud(sb, pixel);
             sb.End();
         }
 
@@ -848,6 +844,51 @@ namespace Vibe_Game.Scenes
                     if (x == _currentRoomGrid.X && y == _currentRoomGrid.Y)
                         sb.DrawRectangle(pixel, r, GameColors.MinimapCurrent, 1);
                 }
+            }
+        }
+
+        private void DrawPlayerHealthHud(SpriteBatch sb, Texture2D pixel)
+        {
+            if (_player?.Stats == null)
+                return;
+
+            int maxCells = Math.Max(1, (int)MathF.Ceiling(_player.Stats.MaxHealth));
+            float currentHealth = MathHelper.Clamp(_player.Stats.Health, 0f, _player.Stats.MaxHealth);
+
+            const int cellSize = 22;
+            const int spacing = 6;
+            const int marginRight = 16;
+            const int marginTop = 16;
+            const int textureInset = 4;
+
+            int totalWidth = maxCells * cellSize + (maxCells - 1) * spacing;
+            int startX = GameInstance.GraphicsDevice.Viewport.Width - marginRight - totalWidth;
+            int y = marginTop;
+
+            for (int i = 0; i < maxCells; i++)
+            {
+                int x = startX + i * (cellSize + spacing);
+                Rectangle cellRect = new Rectangle(x, y, cellSize, cellSize);
+                Rectangle innerRect = new Rectangle(x + textureInset, y + textureInset, cellSize - textureInset * 2, cellSize - textureInset * 2);
+
+                sb.Draw(pixel, cellRect, new Color(20, 20, 26, 220));
+                sb.DrawRectangle(pixel, cellRect, new Color(150, 150, 170), 1);
+
+                // Внутренняя зона остается для будущей текстуры "сердца"/иконки HP.
+                sb.Draw(pixel, innerRect, new Color(45, 45, 55, 210));
+
+                float cellHealth = MathHelper.Clamp(currentHealth - i, 0f, 1f);
+                if (cellHealth <= 0f)
+                    continue;
+
+                Rectangle fillRect = new Rectangle(
+                    innerRect.X + 1,
+                    innerRect.Y + 1,
+                    Math.Max(1, (int)((innerRect.Width - 2) * cellHealth)),
+                    Math.Max(1, innerRect.Height - 2)
+                );
+
+                sb.Draw(pixel, fillRect, new Color(90, 220, 110));
             }
         }
 

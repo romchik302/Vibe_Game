@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 namespace Vibe_Game.Gameplay.Entities.Enemies;
 
@@ -9,6 +10,18 @@ namespace Vibe_Game.Gameplay.Entities.Enemies;
 /// </summary>
 public abstract class Enemy : Entity
 {
+    protected enum FacingDirection
+    {
+        Right,
+        Left,
+        Up,
+        Down
+    }
+
+    private static Texture2D _sharedFlyingTexture;
+    private static Texture2D _sharedChasingTexture;
+    private static Texture2D _sharedAdaptiveTexture;
+
     public int Health { get; set; }
     public int MaxHealth { get; protected set; }
 
@@ -26,12 +39,39 @@ public abstract class Enemy : Entity
 
     /// <summary>Коэффициент затухания отдачи (чем меньше, тем дольше длится отдача).</summary>
     private const float RecoilDamping = 0.85f;
+    protected FacingDirection Facing { get; private set; } = FacingDirection.Right;
 
     protected Enemy(Vector2 position, int maxHealth)
     {
         Position = position;
         MaxHealth = maxHealth;
         Health = maxHealth;
+    }
+
+    public static void LoadSharedTextures(ContentManager content)
+    {
+        if (content == null)
+            return;
+
+        _sharedFlyingTexture ??= TryLoad(content, "enemy_flying_sheet");
+        _sharedChasingTexture ??= TryLoad(content, "enemy_chasing_sheet");
+        _sharedAdaptiveTexture ??= TryLoad(content, "enemy_adaptive_sheet");
+    }
+
+    protected static Texture2D SharedFlyingTexture => _sharedFlyingTexture;
+    protected static Texture2D SharedChasingTexture => _sharedChasingTexture;
+    protected static Texture2D SharedAdaptiveTexture => _sharedAdaptiveTexture;
+
+    private static Texture2D TryLoad(ContentManager content, string assetName)
+    {
+        try
+        {
+            return content.Load<Texture2D>(assetName);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>Вызывается сценой один раз при первом входе игрока в комнату этого врага.</summary>
@@ -115,6 +155,25 @@ public abstract class Enemy : Entity
     protected virtual float GetCollisionRadius()
     {
         return 10f;
+    }
+
+    protected void UpdateFacingFromDirection(Vector2 direction, bool allowVertical = false)
+    {
+        if (direction.LengthSquared() < 0.0001f)
+            return;
+
+        if (allowVertical && System.MathF.Abs(direction.Y) > System.MathF.Abs(direction.X))
+        {
+            Facing = direction.Y > 0 ? FacingDirection.Down : FacingDirection.Up;
+            return;
+        }
+
+        Facing = direction.X >= 0 ? FacingDirection.Right : FacingDirection.Left;
+    }
+
+    protected SpriteEffects GetHorizontalSpriteEffect()
+    {
+        return Facing == FacingDirection.Left ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
     }
 
     public override void Draw(SpriteBatch spriteBatch)

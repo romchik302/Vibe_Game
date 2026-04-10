@@ -138,7 +138,8 @@ internal class PlayerRenderer : IPlayerRenderer
         if (Math.Abs(direction.X) > Math.Abs(direction.Y))
             newDirection = direction.X > 0 ? Direction.Right : Direction.Left;
         else
-            newDirection = direction.Y > 0 ? Direction.Up : Direction.Down;
+            // В MonoGame +Y направлено вниз.
+            newDirection = direction.Y > 0 ? Direction.Down : Direction.Up;
 
         // если направление изменилось → фикс индекса
         if (newDirection != _currentDirection)
@@ -160,8 +161,8 @@ internal class PlayerRenderer : IPlayerRenderer
         return _currentDirection switch
         {
             Direction.Right => 0,
-            Direction.Up => 1,
-            Direction.Down => 2,
+            Direction.Up => 2,
+            Direction.Down => 1,
             Direction.Left => 3,
             _ => 0
         };
@@ -187,6 +188,11 @@ internal class PlayerRenderer : IPlayerRenderer
         {
             _currentFrame.X = _currentFrameIndex * _frameWidth;
             _currentFrame.Y = _idleRow * _frameHeight;
+        }
+        else
+        {
+            _currentFrame.X = 0;
+            _currentFrame.Y = GetAnimationRow() * _frameHeight;
         }
 
         _currentFrame.Width = _frameWidth;
