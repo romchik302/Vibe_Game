@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Vibe_Game.Core.Engine;
 using Vibe_Game.Core.Services;
@@ -14,11 +15,13 @@ namespace Vibe_Game.Scenes
         private const int MinimapRoomSize = 20;
         private const int MinimapSpacing = 22;
         private const int MinimapOffset = 10;
+        private const float MinimapTextScale = 0.35f;
 
         private readonly Game _game;
         private readonly GameSceneState _state;
         private readonly GameSceneProjectileController _projectiles;
         private readonly GameSceneEnemyController _enemies;
+        private SpriteFont _roomFont;
 
         public GameSceneRenderer(
             Game game,
@@ -30,6 +33,11 @@ namespace Vibe_Game.Scenes
             _state = state;
             _projectiles = projectiles;
             _enemies = enemies;
+        }
+
+        public void LoadContent(ContentManager content)
+        {
+            _roomFont = content.Load<SpriteFont>("room_font");
         }
 
         public void Draw(IAttackContext attackContext, Camera camera, SpriteBatch spriteBatch, Texture2D pixel)
@@ -50,6 +58,7 @@ namespace Vibe_Game.Scenes
             _projectiles.Draw(spriteBatch, pixel);
             _enemies.Draw(spriteBatch);
             _state.Player.Draw(spriteBatch);
+            DrawCurrentRoomLabel(spriteBatch);
 
 #if DEBUG
             if (_state.Player.EquippedWeapon is SwordWeapon sword)
@@ -89,7 +98,8 @@ namespace Vibe_Game.Scenes
             {
                 for (int y = 0; y < WorldConfig.GridSize; y++)
                 {
-                    if (_state.FloorMap[x, y] == null)
+                    Point grid = new Point(x, y);
+                    if (_state.FloorMap[x, y] == null || !_state.VisitedRooms.Contains(grid))
                         continue;
 
                     Rectangle rect = new Rectangle(MinimapOffset + x * MinimapSpacing, MinimapOffset + y * MinimapSpacing, MinimapRoomSize, MinimapRoomSize);
@@ -98,15 +108,114 @@ namespace Vibe_Game.Scenes
                     {
                         LevelGenerator.RoomType.Start => GameColors.MinimapStart,
                         LevelGenerator.RoomType.Boss => GameColors.MinimapBoss,
+                        LevelGenerator.RoomType.Shop => GameColors.MinimapShop,
+                        LevelGenerator.RoomType.Treasure => GameColors.MinimapTreasure,
+                        LevelGenerator.RoomType.Secret => GameColors.MinimapSecret,
+                        LevelGenerator.RoomType.SuperSecret => GameColors.MinimapSuperSecret,
+                        LevelGenerator.RoomType.Challenge => GameColors.MinimapChallenge,
+                        LevelGenerator.RoomType.Sacrifice => GameColors.MinimapSacrifice,
                         _ => GameColors.MinimapDefault
                     };
 
-                    spriteBatch.Draw(pixel, rect, roomColor * 0.5f);
+                    bool isCurrent = x == _state.CurrentRoomGrid.X && y == _state.CurrentRoomGrid.Y;
+                    spriteBatch.Draw(pixel, rect, isCurrent ? roomColor : roomColor * 0.55f);
+                    spriteBatch.DrawRectangle(pixel, rect, isCurrent ? GameColors.MinimapCurrent : GameColors.MinimapVisitedOutline, 1);
 
-                    if (x == _state.CurrentRoomGrid.X && y == _state.CurrentRoomGrid.Y)
-                        spriteBatch.DrawRectangle(pixel, rect, GameColors.MinimapCurrent, 1);
+                    if (_roomFont != null)
+                    {
+                        DrawCenteredText(
+                            spriteBatch,
+                            GetRoomTypeShortLabel(_state.FloorMap[x, y].Type),
+                            _roomFont,
+                            new Vector2(rect.Center.X, rect.Center.Y),
+                            GameColors.RoomLabel,
+                            MinimapTextScale);
+                    }
                 }
             }
+        }
+
+        private void DrawCurrentRoomLabel(SpriteBatch spriteBatch)
+        {
+            if (_roomFont == null)
+                return;
+
+            Room room = _state.FloorMap[_state.CurrentRoomGrid.X, _state.CurrentRoomGrid.Y];
+            if (room == null)
+                return;
+
+            Vector2 roomCenter = new Vector2(
+                _state.CurrentRoomGrid.X * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
+                _state.CurrentRoomGrid.Y * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f - 24f
+            );
+
+            string label = GetRoomTypeLabel(room.Type);
+            DrawCenteredText(spriteBatch, label, _roomFont, roomCenter, GameColors.RoomLabel, 1f, GameColors.RoomLabelShadow);
+
+            if (_state.IsPlayerStandingOnFloorExit)
+            {
+                DrawCenteredText(
+                    spriteBatch,
+                    "PRESS E TO DESCEND",
+                    _roomFont,
+                    roomCenter + new Vector2(0f, 34f),
+                    GameColors.FloorHint,
+                    0.7f,
+                    GameColors.RoomLabelShadow);
+            }
+        }
+
+        private static string GetRoomTypeShortLabel(LevelGenerator.RoomType roomType)
+        {
+            return roomType switch
+            {
+                LevelGenerator.RoomType.Start => "ST",
+                LevelGenerator.RoomType.Boss => "BO",
+                LevelGenerator.RoomType.Shop => "SH",
+                LevelGenerator.RoomType.Treasure => "TR",
+                LevelGenerator.RoomType.Secret => "SE",
+                LevelGenerator.RoomType.SuperSecret => "SS",
+                LevelGenerator.RoomType.Challenge => "CH",
+                LevelGenerator.RoomType.Sacrifice => "SA",
+                _ => "NO"
+            };
+        }
+
+        private static string GetRoomTypeLabel(LevelGenerator.RoomType roomType)
+        {
+            return roomType switch
+            {
+                LevelGenerator.RoomType.Start => "START ROOM",
+                LevelGenerator.RoomType.Boss => "BOSS ROOM",
+                LevelGenerator.RoomType.Shop => "SHOP ROOM",
+                LevelGenerator.RoomType.Treasure => "TREASURE ROOM",
+                LevelGenerator.RoomType.Secret => "SECRET ROOM",
+                LevelGenerator.RoomType.SuperSecret => "SUPER SECRET ROOM",
+                LevelGenerator.RoomType.Challenge => "CHALLENGE ROOM",
+                LevelGenerator.RoomType.Sacrifice => "SACRIFICE ROOM",
+                _ => "NORMAL ROOM"
+            };
+        }
+
+        private static void DrawCenteredText(
+            SpriteBatch spriteBatch,
+            string text,
+            SpriteFont font,
+            Vector2 center,
+            Color color,
+            float scale,
+            Color? shadowColor = null)
+        {
+            Vector2 size = font.MeasureString(text) * scale;
+            Vector2 origin = size / 2f;
+            Vector2 position = center - origin;
+
+            if (shadowColor.HasValue)
+            {
+                spriteBatch.DrawString(font, text, position + new Vector2(2f, 2f), shadowColor.Value, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+            }
+
+            spriteBatch.DrawString(font, text, position, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
 
         private void DrawPlayerHealthHud(SpriteBatch spriteBatch, Texture2D pixel)

@@ -14,5 +14,9 @@ namespace Vibe_Game.Scenes
         public Point LastRoomGrid { get; set; } = new Point(-1, -1);
         public Vector2 CameraPosition { get; set; }
         public List<Projectile> Projectiles { get; } = new();
+        public HashSet<Point> VisitedRooms { get; } = new();
+        public int CurrentFloorIndex { get; set; } = 1;
+        public int MaxFloorIndex { get; } = 2;
+        public bool IsPlayerStandingOnFloorExit { get; set; }
     }
 }

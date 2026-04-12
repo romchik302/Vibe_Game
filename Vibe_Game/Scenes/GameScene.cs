@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Vibe_Game.Core.Engine;
 using Vibe_Game.Core.Interfaces;
@@ -11,6 +12,8 @@ namespace Vibe_Game.Scenes
 {
     public class GameScene : BaseScene
     {
+        private static readonly Point StartRoomGrid = new(WorldConfig.CenterGrid, WorldConfig.CenterGrid);
+
         private readonly GameSceneState _state = new();
         private readonly IPlayerRenderer _playerRenderer;
         private readonly IInputService _inputService;
@@ -32,29 +35,17 @@ namespace Vibe_Game.Scenes
 
         public override void Initialize()
         {
-            var levelGenerator = new LevelGenerator();
-            _state.FloorMap = levelGenerator.GenerateFloor(1);
-
             _world = new GameSceneWorld(_state);
             _enemyController = new GameSceneEnemyController(_state, _world);
             _projectileController = new GameSceneProjectileController(_state, _world);
             _renderer = new GameSceneRenderer(GameInstance, _state, _projectileController, _enemyController);
             _attackContext = new GameSceneAttackContext(_state, _world, _projectileController, _enemyController);
 
-            _world.InitializeDoorStates();
-            _enemyController.SpawnEnemies(floorIndex: 1);
-            _world.RefreshEnemyOccupancy();
-
-            _state.CurrentRoomGrid = new Point(WorldConfig.CenterGrid, WorldConfig.CenterGrid);
-
-            Vector2 startPos = new Vector2(
-                WorldConfig.CenterGrid * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
-                WorldConfig.CenterGrid * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f
-            );
-
+            Vector2 startPos = GetStartWorldPosition();
             _state.Player = new Player(startPos, _playerRenderer, _inputService, _contentLoader, _attackContext);
             _state.Player.EquippedWeapon = new SwordWeapon();
-            _state.CameraPosition = startPos;
+
+            LoadFloor(floorIndex: 1);
 
             base.Initialize();
         }
@@ -63,6 +54,7 @@ namespace Vibe_Game.Scenes
         {
             Enemy.LoadSharedTextures(GameInstance.Content);
             _state.Player.LoadContent(GameInstance.Content);
+            _renderer.LoadContent(GameInstance.Content);
         }
 
         public override void Update(GameTime gameTime)
@@ -76,6 +68,7 @@ namespace Vibe_Game.Scenes
 
             if (_state.CurrentRoomGrid != _state.LastRoomGrid)
             {
+                _state.VisitedRooms.Add(_state.CurrentRoomGrid);
                 _enemyController.ActivateEnemies(_state.CurrentRoomGrid);
                 _world.OnRoomEntered(_state.CurrentRoomGrid, _state.LastRoomGrid);
                 _state.LastRoomGrid = _state.CurrentRoomGrid;
@@ -84,6 +77,11 @@ namespace Vibe_Game.Scenes
             _projectileController.Update(gameTime);
             _enemyController.Update(gameTime);
             _world.UpdateCurrentRoomState();
+            _state.IsPlayerStandingOnFloorExit = _world.TryGetFloorExitTarget(out int nextFloorIndex);
+
+            if (_state.IsPlayerStandingOnFloorExit && _inputService.IsActionPressed(InputAction.Interact))
+                LoadFloor(nextFloorIndex);
+
             _world.UpdateCamera(GetCamera());
 
             base.Update(gameTime);
@@ -98,6 +96,36 @@ namespace Vibe_Game.Scenes
                 return;
 
             _renderer.Draw(_attackContext, GetCamera(), spriteBatch, pixel);
+        }
+
+        private void LoadFloor(int floorIndex)
+        {
+            var levelGenerator = new LevelGenerator();
+
+            _state.CurrentFloorIndex = Math.Clamp(floorIndex, 1, _state.MaxFloorIndex);
+            _state.FloorMap = levelGenerator.GenerateFloor(_state.CurrentFloorIndex);
+            _state.Projectiles.Clear();
+            _state.VisitedRooms.Clear();
+            _state.IsPlayerStandingOnFloorExit = false;
+            _state.CurrentRoomGrid = StartRoomGrid;
+            _state.LastRoomGrid = StartRoomGrid;
+
+            Vector2 startPos = GetStartWorldPosition();
+            _state.Player.Position = startPos;
+            _state.CameraPosition = startPos;
+            _state.VisitedRooms.Add(StartRoomGrid);
+
+            _world.InitializeDoorStates();
+            _enemyController.SpawnEnemies(_state.CurrentFloorIndex);
+            _world.RefreshEnemyOccupancy();
+        }
+
+        private static Vector2 GetStartWorldPosition()
+        {
+            return new Vector2(
+                StartRoomGrid.X * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
+                StartRoomGrid.Y * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f
+            );
         }
     }
 }

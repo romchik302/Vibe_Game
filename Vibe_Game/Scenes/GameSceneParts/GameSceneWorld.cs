@@ -241,6 +241,8 @@ namespace Vibe_Game.Scenes
             if (room == null)
                 return;
 
+            EnsureBossFloorExit(room);
+
             if (room.Type == LevelGenerator.RoomType.Start)
             {
                 room.IsLocked = false;
@@ -254,6 +256,7 @@ namespace Vibe_Game.Scenes
             {
                 room.IsLocked = false;
                 room.IsCleared = true;
+                EnsureBossFloorExit(room);
                 RefreshDoorStatesAround(_state.CurrentRoomGrid);
                 return;
             }
@@ -295,6 +298,38 @@ namespace Vibe_Game.Scenes
                 gx * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
                 gy * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f
             );
+        }
+
+        public bool TryGetFloorExitTarget(out int targetFloorIndex)
+        {
+            targetFloorIndex = 0;
+
+            Room room = GetRoomAtGrid(_state.CurrentRoomGrid);
+            TrapdoorTile floorExitTile = room?.FloorExitTile;
+            if (floorExitTile == null)
+                return false;
+
+            float localX = _state.Player.Position.X - _state.CurrentRoomGrid.X * WorldConfig.RoomWidthPx;
+            float localY = _state.Player.Position.Y - _state.CurrentRoomGrid.Y * WorldConfig.RoomHeightPx;
+            Rectangle playerRect = new Rectangle(
+                (int)localX - PlayerConfig.Radius,
+                (int)localY - PlayerConfig.Radius,
+                PlayerConfig.Size,
+                PlayerConfig.Size
+            );
+
+            Rectangle trapdoorRect = new Rectangle(
+                floorExitTile.GridPosition.X * WorldConfig.TileSize,
+                floorExitTile.GridPosition.Y * WorldConfig.TileSize,
+                WorldConfig.TileSize,
+                WorldConfig.TileSize
+            );
+
+            if (!playerRect.Intersects(trapdoorRect))
+                return false;
+
+            targetFloorIndex = floorExitTile.TargetFloorIndex;
+            return true;
         }
 
         private bool HasCollision(Vector2 position)
@@ -465,6 +500,20 @@ namespace Vibe_Game.Scenes
         {
             bool buttonSatisfied = !room.HasButton || room.IsButtonPressed;
             return buttonSatisfied && !HasAliveEnemies(room);
+        }
+
+        private void EnsureBossFloorExit(Room room)
+        {
+            if (room.Type != LevelGenerator.RoomType.Boss)
+                return;
+
+            if (!room.IsCleared)
+                return;
+
+            if (_state.CurrentFloorIndex >= _state.MaxFloorIndex)
+                return;
+
+            room.CreateFloorExit(_state.CurrentFloorIndex + 1);
         }
 
         private static bool HasAliveEnemies(Room room)

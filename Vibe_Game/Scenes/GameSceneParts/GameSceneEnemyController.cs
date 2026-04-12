@@ -26,6 +26,7 @@ namespace Vibe_Game.Scenes
 
         public void SpawnEnemies(int floorIndex)
         {
+            SpawnBossRoomEnemies(floorIndex);
             SpawnFlyingEnemiesInRooms(floorIndex);
             SpawnChasingEnemiesInRooms(floorIndex);
             SpawnAdaptiveChasingEnemiesInRooms(floorIndex);
@@ -272,7 +273,7 @@ namespace Vibe_Game.Scenes
                     if (room == null)
                         continue;
 
-                    if (room.Type == LevelGenerator.RoomType.Start)
+                    if (!CanSpawnRegularEnemies(room.Type))
                         continue;
 
                     if (rng.NextDouble() > EnemyConfig.FlyingSpawnChancePerRoom)
@@ -298,7 +299,7 @@ namespace Vibe_Game.Scenes
                 for (int gy = 0; gy < WorldConfig.GridSize; gy++)
                 {
                     Room room = _state.FloorMap[gx, gy];
-                    if (room == null || room.Type == LevelGenerator.RoomType.Start)
+                    if (room == null || !CanSpawnRegularEnemies(room.Type))
                         continue;
 
                     if (rng.NextDouble() > EnemyConfig.ChasingSpawnChancePerRoom)
@@ -324,7 +325,7 @@ namespace Vibe_Game.Scenes
                 for (int gy = 0; gy < WorldConfig.GridSize; gy++)
                 {
                     Room room = _state.FloorMap[gx, gy];
-                    if (room == null || room.Type == LevelGenerator.RoomType.Start)
+                    if (room == null || !CanSpawnRegularEnemies(room.Type))
                         continue;
 
                     if (rng.NextDouble() > EnemyConfig.AdaptiveChasingSpawnChance)
@@ -339,6 +340,50 @@ namespace Vibe_Game.Scenes
                     }
                 }
             }
+        }
+
+        private void SpawnBossRoomEnemies(int floorIndex)
+        {
+            var rng = new Random(unchecked(floorIndex * 911 ^ 0xB055));
+
+            for (int gx = 0; gx < WorldConfig.GridSize; gx++)
+            {
+                for (int gy = 0; gy < WorldConfig.GridSize; gy++)
+                {
+                    Room room = _state.FloorMap[gx, gy];
+                    if (room?.Type != LevelGenerator.RoomType.Boss)
+                        continue;
+
+                    int chasingCount = 2 + floorIndex;
+                    int flyingCount = 1 + floorIndex / 2;
+                    int adaptiveCount = Math.Max(1, floorIndex - 1);
+
+                    for (int i = 0; i < chasingCount; i++)
+                    {
+                        Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                        room.enemies.Add(new ChasingEnemy(spawnWorld, _wallCollision));
+                    }
+
+                    for (int i = 0; i < flyingCount; i++)
+                    {
+                        Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                        room.enemies.Add(new FlyingEnemy(spawnWorld, _flyingCollision));
+                    }
+
+                    for (int i = 0; i < adaptiveCount; i++)
+                    {
+                        Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                        room.enemies.Add(new AdaptiveChasingEnemy(spawnWorld, _wallCollision));
+                    }
+                }
+            }
+        }
+
+        private static bool CanSpawnRegularEnemies(LevelGenerator.RoomType roomType)
+        {
+            return roomType is LevelGenerator.RoomType.Normal
+                or LevelGenerator.RoomType.Challenge
+                or LevelGenerator.RoomType.Sacrifice;
         }
 
         private static float GetEnemyRadius(Enemy enemy)
