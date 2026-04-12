@@ -73,37 +73,13 @@ namespace Vibe_Game.Scenes
             {
                 for (int ty = 0; ty < WorldConfig.RoomHeightTiles; ty++)
                 {
-                    Color color = room.Tiles[tx, ty] == TileType.Wall ? GameColors.Wall : GameColors.Floor;
+                    Color color = room.Tiles[tx, ty].Tint;
                     spriteBatch.Draw(
                         pixel,
                         new Rectangle(wx + tx * WorldConfig.TileSize, wy + ty * WorldConfig.TileSize, WorldConfig.TileSize, WorldConfig.TileSize),
                         color
                     );
                 }
-            }
-
-            spriteBatch.Draw(
-                pixel,
-                new Rectangle(wx + room.ButtonPos.X * WorldConfig.TileSize + 8, wy + room.ButtonPos.Y * WorldConfig.TileSize + 8, 16, 16),
-                room.IsLocked ? GameColors.ButtonLocked : GameColors.ButtonUnlocked
-            );
-
-            if (!room.IsLocked)
-            {
-                int doorYPos = wy + (WorldConfig.RoomHeightTiles / 2) * WorldConfig.TileSize;
-                int doorXPos = wx + (WorldConfig.RoomWidthTiles / 2 - 1) * WorldConfig.TileSize;
-
-                if (gx > 0 && _state.FloorMap[gx - 1, gy] != null)
-                    spriteBatch.Draw(pixel, new Rectangle(wx, doorYPos, WorldConfig.TileSize, WorldConfig.TileSize * 2), GameColors.Floor);
-
-                if (gx < WorldConfig.GridSize - 1 && _state.FloorMap[gx + 1, gy] != null)
-                    spriteBatch.Draw(pixel, new Rectangle(wx + WorldConfig.RoomWidthPx - WorldConfig.TileSize, doorYPos, WorldConfig.TileSize, WorldConfig.TileSize * 2), GameColors.Floor);
-
-                if (gy > 0 && _state.FloorMap[gx, gy - 1] != null)
-                    spriteBatch.Draw(pixel, new Rectangle(doorXPos, wy, WorldConfig.TileSize * 2, WorldConfig.TileSize), GameColors.Floor);
-
-                if (gy < WorldConfig.GridSize - 1 && _state.FloorMap[gx, gy + 1] != null)
-                    spriteBatch.Draw(pixel, new Rectangle(doorXPos, wy + WorldConfig.RoomHeightPx - WorldConfig.TileSize, WorldConfig.TileSize * 2, WorldConfig.TileSize), GameColors.Floor);
             }
         }
 

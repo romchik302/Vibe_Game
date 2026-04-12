@@ -78,7 +78,7 @@ namespace Vibe_Game.Gameplay.ItemsExample
         private readonly float _damageIncrease;
 
         public string Name => $"Damage Boost +{_damageIncrease}";
-        public string Description => $"Увеличивает урон на {_damageIncrease}";
+        public string Description => $"Increases damage by {_damageIncrease}";
 
         public DamageBoostEffect(float damageIncrease)
         {
@@ -104,7 +104,7 @@ namespace Vibe_Game.Gameplay.ItemsExample
         private readonly float _speedIncrease;
 
         public string Name => $"Speed Boost +{_speedIncrease}";
-        public string Description => $"Увеличивает скорость на {_speedIncrease * 100}%";
+        public string Description => $"Increases speed by {_speedIncrease * 100}%";
 
         public SpeedBoostEffect(float speedIncrease)
         {
@@ -130,7 +130,7 @@ namespace Vibe_Game.Gameplay.ItemsExample
         private readonly float _healthIncrease;
 
         public string Name => $"Health Boost +{_healthIncrease}";
-        public string Description => $"Увеличивает максимальное здоровье на {_healthIncrease}";
+        public string Description => $"Increases max health by {_healthIncrease}";
 
         public HealthBoostEffect(float healthIncrease)
         {
@@ -194,7 +194,7 @@ namespace Vibe_Game.Gameplay.ItemsExample
         private float _remainingTime;
 
         public string Name => $"{_baseEffect.Name} (Temporary)";
-        public string Description => $"{_baseEffect.Description}. Длительность: {_duration} сек";
+        public string Description => $"{_baseEffect.Description}. Duration: {_duration} sec";
 
         public TemporaryEffect(IItemEffect baseEffect, float duration)
         {
@@ -241,7 +241,7 @@ namespace Vibe_Game.Gameplay.ItemsExample
             // Применяем комбинированный эффект
             var comboEffect = new CompositeItemEffect(
                 "Super Boost",
-                "Увеличивает урон и скорость",
+                "Increases damage and speed",
                 new DamageBoostEffect(0.3f),
                 new SpeedBoostEffect(0.2f)
             );

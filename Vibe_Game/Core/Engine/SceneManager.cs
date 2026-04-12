@@ -13,7 +13,7 @@ namespace Vibe_Game.Core.Engine
         {
             // УБРАТЬ: game.Components.Add(this); ← УДАЛИ ЭТУ СТРОКУ!
             // Базовый конструктор уже это делает
-            System.Diagnostics.Debug.WriteLine("SceneManager создан");
+            System.Diagnostics.Debug.WriteLine("SceneManager created");
         }
 
         public void AddScene(string name, BaseScene scene)

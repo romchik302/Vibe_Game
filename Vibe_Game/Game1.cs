@@ -31,7 +31,7 @@ namespace Vibe_Game
             _graphics.PreferredBackBufferHeight = 720;
             IsMouseVisible = true;
 
-            System.Diagnostics.Debug.WriteLine("Конструктор Game1 выполнен");
+            System.Diagnostics.Debug.WriteLine("Game1 constructor completed");
 
             _sceneManager = new SceneManager(this);
             Components.Add(_sceneManager);
@@ -41,7 +41,7 @@ namespace Vibe_Game
 
         protected override void Initialize()
         {
-            System.Diagnostics.Debug.WriteLine("=== Initialize начат ===");
+            System.Diagnostics.Debug.WriteLine("=== Initialize started ===");
 
             // 1. БАЗОВАЯ ИНИЦИАЛИЗАЦИЯ MonoGame (ВАЖНО!)
             base.Initialize();
@@ -49,11 +49,11 @@ namespace Vibe_Game
             // 2. Проверяем что GraphicsDevice создан
             if (GraphicsDevice == null)
             {
-                System.Diagnostics.Debug.WriteLine("ОШИБКА: GraphicsDevice is null!");
-                throw new InvalidOperationException("GraphicsDevice не создан");
+                System.Diagnostics.Debug.WriteLine("ERROR: GraphicsDevice is null");
+                throw new InvalidOperationException("GraphicsDevice was not created");
             }
 
-            System.Diagnostics.Debug.WriteLine($"GraphicsDevice создан: {GraphicsDevice.Adapter.Description}");
+            System.Diagnostics.Debug.WriteLine($"GraphicsDevice created: {GraphicsDevice.Adapter.Description}");
 
             // 3. Инициализируем сервисы
             InitializeServices();
@@ -61,7 +61,7 @@ namespace Vibe_Game
             // 4. Загружаем сцену
             LoadInitialScene();
 
-            System.Diagnostics.Debug.WriteLine("=== Initialize завершён ===");
+            System.Diagnostics.Debug.WriteLine("=== Initialize completed ===");
         }
 
         private void InitializeServices()
@@ -92,12 +92,12 @@ namespace Vibe_Game
 
         protected override void LoadContent()
         {
-            System.Diagnostics.Debug.WriteLine("=== LoadContent начат ===");
+            System.Diagnostics.Debug.WriteLine("=== LoadContent started ===");
 
             // 1. Загрузить контент через PlayerContentLoader
             _contentLoader.LoadContent(Content);
             _playerTexture = _contentLoader.PlayerTexture;
-            System.Diagnostics.Debug.WriteLine("Текстура игрока загружена");
+            System.Diagnostics.Debug.WriteLine("Player texture loaded");
 
             // 2. Сохранить текстуру в сервисах для доступа из других мест
             Services.AddService(typeof(Texture2D), _playerTexture);
@@ -109,19 +109,19 @@ namespace Vibe_Game
 
             if (_sceneManager == null)
             {
-                System.Diagnostics.Debug.WriteLine("ПРЕДУПРЕЖДЕНИЕ: SceneManager is null, пробуем восстановить...");
+                System.Diagnostics.Debug.WriteLine("WARNING: SceneManager is null, attempting recovery");
 
                 // Экстренное восстановление
                 _sceneManager = Services.GetService<SceneManager>();
 
                 if (_sceneManager == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("КРИТИЧЕСКАЯ ОШИБКА: Не могу восстановить SceneManager!");
-                    throw new InvalidOperationException("SceneManager не найден в сервисах");
+                    System.Diagnostics.Debug.WriteLine("CRITICAL ERROR: Failed to recover SceneManager");
+                    throw new InvalidOperationException("SceneManager was not found in services");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("SceneManager восстановлен из сервисов");
+                    System.Diagnostics.Debug.WriteLine("SceneManager recovered from services");
                 }
             }
 
@@ -129,19 +129,19 @@ namespace Vibe_Game
             _sceneManager.Enabled = true;
             _sceneManager.Visible = true;
 
-            System.Diagnostics.Debug.WriteLine("SceneManager включен");
+            System.Diagnostics.Debug.WriteLine("SceneManager enabled");
 
-            System.Diagnostics.Debug.WriteLine("=== LoadContent завершён ===");
+            System.Diagnostics.Debug.WriteLine("=== LoadContent completed ===");
         }
 
         private void LoadInitialScene()
         {
-            System.Diagnostics.Debug.WriteLine("--- Загрузка начальной сцены ---");
+            System.Diagnostics.Debug.WriteLine("--- Loading initial scene ---");
 
             if (_sceneManager == null)
             {
-                System.Diagnostics.Debug.WriteLine("КРИТИЧЕСКАЯ ОШИБКА: SceneManager is null!");
-                throw new InvalidOperationException("SceneManager не инициализирован");
+                System.Diagnostics.Debug.WriteLine("CRITICAL ERROR: SceneManager is null");
+                throw new InvalidOperationException("SceneManager is not initialized");
             }
 
             try
@@ -152,20 +152,20 @@ namespace Vibe_Game
                 // Создаём игровую сцену с новым рендерером
                 var gameScene = new GameScene(this, playerRenderer, _inputService, _contentLoader);
                 _sceneManager.AddScene("game", gameScene);
-                System.Diagnostics.Debug.WriteLine("GameScene создана");
+                System.Diagnostics.Debug.WriteLine("GameScene created");
 
                 // Переключаемся на неё
                 _sceneManager.SwitchTo("game");
-                System.Diagnostics.Debug.WriteLine("Переключение на GameScene успешно");
+                System.Diagnostics.Debug.WriteLine("Switched to GameScene successfully");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ОШИБКА загрузки сцены: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Scene loading error: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
                 throw;
             }
 
-            System.Diagnostics.Debug.WriteLine("--- Начальная сцена загружена ---");
+            System.Diagnostics.Debug.WriteLine("--- Initial scene loaded ---");
         }
 
         protected override void Update(GameTime gameTime)

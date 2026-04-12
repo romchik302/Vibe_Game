@@ -41,7 +41,9 @@ namespace Vibe_Game.Scenes
             _renderer = new GameSceneRenderer(GameInstance, _state, _projectileController, _enemyController);
             _attackContext = new GameSceneAttackContext(_state, _world, _projectileController, _enemyController);
 
+            _world.InitializeDoorStates();
             _enemyController.SpawnEnemies(floorIndex: 1);
+            _world.RefreshEnemyOccupancy();
 
             _state.CurrentRoomGrid = new Point(WorldConfig.CenterGrid, WorldConfig.CenterGrid);
 
@@ -71,16 +73,17 @@ namespace Vibe_Game.Scenes
             _state.Player.Update(gameTime);
 
             _world.CheckTileCollision(oldPos);
-            _world.TryUnlockButton();
-            _projectileController.Update(gameTime);
 
             if (_state.CurrentRoomGrid != _state.LastRoomGrid)
             {
                 _enemyController.ActivateEnemies(_state.CurrentRoomGrid);
+                _world.OnRoomEntered(_state.CurrentRoomGrid, _state.LastRoomGrid);
                 _state.LastRoomGrid = _state.CurrentRoomGrid;
             }
 
+            _projectileController.Update(gameTime);
             _enemyController.Update(gameTime);
+            _world.UpdateCurrentRoomState();
             _world.UpdateCamera(GetCamera());
 
             base.Update(gameTime);

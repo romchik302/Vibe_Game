@@ -22,8 +22,8 @@ namespace Vibe_Game
 #if DEBUG
                     // В дебаге показываем окно с ошибкой
                     System.Windows.Forms.MessageBox.Show(
-                        $"Ошибка запуска игры:\n{ex.Message}\n\n{ex.StackTrace}",
-                        "Ошибка",
+                        $"Game startup error:\n{ex.Message}\n\n{ex.StackTrace}",
+                        "Error",
                         System.Windows.Forms.MessageBoxButtons.OK,
                         System.Windows.Forms.MessageBoxIcon.Error
                     );

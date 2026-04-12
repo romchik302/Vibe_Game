@@ -144,6 +144,8 @@ namespace Vibe_Game.Scenes
                     }
                 }
             }
+
+            _world.RefreshEnemyOccupancy();
         }
 
         public void Draw(SpriteBatch spriteBatch)

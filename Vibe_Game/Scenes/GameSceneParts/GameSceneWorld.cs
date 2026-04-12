@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Vibe_Game.Core.Engine;
 using Vibe_Game.Core.Services;
 using Vibe_Game.Core.Settings;
+using Vibe_Game.Core.Tiles;
 using Vibe_Game.Gameplay.Entities.Enemies;
 
 namespace Vibe_Game.Scenes
@@ -32,6 +33,18 @@ namespace Vibe_Game.Scenes
             return _state.FloorMap[roomGrid.X, roomGrid.Y];
         }
 
+        public bool IsDoorwayOpen(Point roomGrid, int deltaX, int deltaY)
+        {
+            Room room = GetRoomAtGrid(roomGrid);
+            Point neighborGrid = new Point(roomGrid.X + deltaX, roomGrid.Y + deltaY);
+            Room neighbor = GetRoomAtGridOrNull(neighborGrid);
+
+            if (room == null || neighbor == null)
+                return false;
+
+            return !room.IsLocked && !neighbor.IsLocked;
+        }
+
         public bool IsFlyingPointBlocked(Vector2 worldPosition)
         {
             Point roomGrid = GetRoomGridAtWorldPosition(worldPosition);
@@ -52,7 +65,8 @@ namespace Vibe_Game.Scenes
             if (interior)
                 return false;
 
-            return IsPointWall(room, lx, ly);
+            Tile tile = room.GetTile(tx, ty);
+            return tile == null || !tile.IsWalkable;
         }
 
         public bool IsPointBlockedByAllWalls(Vector2 worldPosition)
@@ -73,7 +87,8 @@ namespace Vibe_Game.Scenes
             if (tx < 0 || tx >= WorldConfig.RoomWidthTiles || ty < 0 || ty >= WorldConfig.RoomHeightTiles)
                 return true;
 
-            return room.Tiles[tx, ty] == TileType.Wall;
+            Tile tile = room.GetTile(tx, ty);
+            return tile == null || !tile.IsWalkable;
         }
 
         public void CheckTileCollision(Vector2 oldPos)
@@ -122,13 +137,7 @@ namespace Vibe_Game.Scenes
             }
 
             _state.Player.Position = finalPos;
-
-            int rx = (int)Math.Floor(_state.Player.Position.X / WorldConfig.RoomWidthPx);
-            int ry = (int)Math.Floor(_state.Player.Position.Y / WorldConfig.RoomHeightPx);
-            _state.CurrentRoomGrid = new Point(
-                Math.Clamp(rx, 0, WorldConfig.GridSize - 1),
-                Math.Clamp(ry, 0, WorldConfig.GridSize - 1)
-            );
+            TryUpdateCurrentRoomGrid();
         }
 
         public bool IsWorldPointBlocked(Vector2 worldPosition)
@@ -144,6 +153,36 @@ namespace Vibe_Game.Scenes
             if (ly < 0) ly += WorldConfig.RoomHeightPx;
 
             return IsPointWall(room, lx, ly);
+        }
+
+        public void InitializeDoorStates()
+        {
+            for (int x = 0; x < WorldConfig.GridSize; x++)
+            {
+                for (int y = 0; y < WorldConfig.GridSize; y++)
+                    RefreshDoorTilesForRoom(new Point(x, y));
+            }
+        }
+
+        public void OnRoomEntered(Point roomGrid, Point previousRoomGrid)
+        {
+            Room room = GetRoomAtGrid(roomGrid);
+            if (room == null)
+                return;
+
+            if (room.Type == LevelGenerator.RoomType.Start || room.IsCleared)
+            {
+                room.IsLocked = false;
+                RefreshDoorStatesAround(roomGrid);
+                return;
+            }
+
+            if (ShouldLockRoom(room))
+            {
+                MovePlayerInsideRoom(roomGrid, previousRoomGrid);
+                room.IsLocked = true;
+                RefreshDoorStatesAround(roomGrid);
+            }
         }
 
         public Vector2 ResolveEnemyWallCollision(Enemy enemy, Vector2 oldPos, Vector2 newPos)
@@ -196,31 +235,34 @@ namespace Vibe_Game.Scenes
             return finalPos;
         }
 
-        public void TryUnlockButton()
+        public void UpdateCurrentRoomState()
         {
             Room room = _state.FloorMap[_state.CurrentRoomGrid.X, _state.CurrentRoomGrid.Y];
             if (room == null)
                 return;
 
-            float lx = _state.Player.Position.X % WorldConfig.RoomWidthPx;
-            float ly = _state.Player.Position.Y % WorldConfig.RoomHeightPx;
-
-            Rectangle playerRect = new Rectangle(
-                (int)lx - PlayerConfig.Radius,
-                (int)ly - PlayerConfig.Radius,
-                PlayerConfig.Size,
-                PlayerConfig.Size
-            );
-
-            Rectangle buttonRect = new Rectangle(
-                room.ButtonPos.X * WorldConfig.TileSize,
-                room.ButtonPos.Y * WorldConfig.TileSize,
-                WorldConfig.TileSize,
-                WorldConfig.TileSize
-            );
-
-            if (playerRect.Intersects(buttonRect))
+            if (room.Type == LevelGenerator.RoomType.Start)
+            {
                 room.IsLocked = false;
+                RefreshDoorStatesAround(_state.CurrentRoomGrid);
+                return;
+            }
+
+            TryPressRoomButton(room);
+
+            if (AreUnlockRequirementsMet(room))
+            {
+                room.IsLocked = false;
+                room.IsCleared = true;
+                RefreshDoorStatesAround(_state.CurrentRoomGrid);
+                return;
+            }
+
+            if (!room.IsCleared && ShouldLockRoom(room))
+            {
+                room.IsLocked = true;
+                RefreshDoorStatesAround(_state.CurrentRoomGrid);
+            }
         }
 
         public void UpdateCamera(Camera camera)
@@ -241,7 +283,7 @@ namespace Vibe_Game.Scenes
                 int tx = rng.Next(1, WorldConfig.RoomWidthTiles - 1);
                 int ty = rng.Next(1, WorldConfig.RoomHeightTiles - 1);
 
-                if (room.Tiles[tx, ty] == TileType.Floor)
+                if (room.GetTile(tx, ty)?.CanHostEnemy == true)
                 {
                     float wx = gx * WorldConfig.RoomWidthPx + tx * WorldConfig.TileSize + WorldConfig.TileSize / 2f;
                     float wy = gy * WorldConfig.RoomHeightPx + ty * WorldConfig.TileSize + WorldConfig.TileSize / 2f;
@@ -257,22 +299,12 @@ namespace Vibe_Game.Scenes
 
         private bool HasCollision(Vector2 position)
         {
-            Point roomGrid = GetRoomGridAtWorldPosition(position);
-            Room room = _state.FloorMap[roomGrid.X, roomGrid.Y];
-            if (room == null)
-                return true;
-
-            float lx = position.X % WorldConfig.RoomWidthPx;
-            float ly = position.Y % WorldConfig.RoomHeightPx;
-            if (lx < 0) lx += WorldConfig.RoomWidthPx;
-            if (ly < 0) ly += WorldConfig.RoomHeightPx;
-
             float offset = PlayerConfig.CollisionOffset;
 
-            return IsPointWall(room, lx - offset, ly - offset) ||
-                   IsPointWall(room, lx + offset, ly - offset) ||
-                   IsPointWall(room, lx - offset, ly + offset) ||
-                   IsPointWall(room, lx + offset, ly + offset);
+            return IsWorldPointBlocked(new Vector2(position.X - offset, position.Y - offset)) ||
+                   IsWorldPointBlocked(new Vector2(position.X + offset, position.Y - offset)) ||
+                   IsWorldPointBlocked(new Vector2(position.X - offset, position.Y + offset)) ||
+                   IsWorldPointBlocked(new Vector2(position.X + offset, position.Y + offset));
         }
 
         private bool IsPointWall(Room room, float lx, float ly)
@@ -280,36 +312,170 @@ namespace Vibe_Game.Scenes
             int tx = (int)Math.Floor(lx / WorldConfig.TileSize);
             int ty = (int)Math.Floor(ly / WorldConfig.TileSize);
 
-            int doorY1 = WorldConfig.RoomHeightTiles / 2;
-            int doorY2 = doorY1 + 1;
-            int doorX2 = WorldConfig.RoomWidthTiles / 2;
-            int doorX1 = doorX2 - 1;
-
-            bool isDoorY = ty == doorY1 || ty == doorY2;
-            bool isDoorX = tx == doorX1 || tx == doorX2;
-
             if (tx < 0 || tx >= WorldConfig.RoomWidthTiles || ty < 0 || ty >= WorldConfig.RoomHeightTiles)
-            {
-                if (!room.IsLocked)
-                {
-                    if (tx < 0 && isDoorY) return false;
-                    if (tx >= WorldConfig.RoomWidthTiles && isDoorY) return false;
-                    if (ty < 0 && isDoorX) return false;
-                    if (ty >= WorldConfig.RoomHeightTiles && isDoorX) return false;
-                }
-
                 return true;
-            }
 
-            if (!room.IsLocked)
+            Tile tile = room.GetTile(tx, ty);
+            return tile == null || !tile.IsWalkable;
+        }
+
+        public void RefreshEnemyOccupancy()
+        {
+            for (int x = 0; x < WorldConfig.GridSize; x++)
             {
-                if (tx == 0 && isDoorY) return false;
-                if (tx == WorldConfig.RoomWidthTiles - 1 && isDoorY) return false;
-                if (ty == 0 && isDoorX) return false;
-                if (ty == WorldConfig.RoomHeightTiles - 1 && isDoorX) return false;
+                for (int y = 0; y < WorldConfig.GridSize; y++)
+                {
+                    Room room = _state.FloorMap[x, y];
+                    if (room == null)
+                        continue;
+
+                    room.ClearEnemyOccupancy();
+
+                    foreach (Enemy enemy in room.enemies)
+                    {
+                        if (!enemy.IsAlive)
+                            continue;
+
+                        Vector2 localPosition = enemy.Position - new Vector2(x * WorldConfig.RoomWidthPx, y * WorldConfig.RoomHeightPx);
+                        int tileX = (int)Math.Floor(localPosition.X / WorldConfig.TileSize);
+                        int tileY = (int)Math.Floor(localPosition.Y / WorldConfig.TileSize);
+                        room.MarkEnemyOccupancy(tileX, tileY);
+                    }
+                }
+            }
+        }
+
+        private void TryUpdateCurrentRoomGrid()
+        {
+            float offset = PlayerConfig.CollisionOffset;
+
+            Point topLeft = GetRoomGridAtWorldPosition(new Vector2(_state.Player.Position.X - offset, _state.Player.Position.Y - offset));
+            Point topRight = GetRoomGridAtWorldPosition(new Vector2(_state.Player.Position.X + offset, _state.Player.Position.Y - offset));
+            Point bottomLeft = GetRoomGridAtWorldPosition(new Vector2(_state.Player.Position.X - offset, _state.Player.Position.Y + offset));
+            Point bottomRight = GetRoomGridAtWorldPosition(new Vector2(_state.Player.Position.X + offset, _state.Player.Position.Y + offset));
+
+            bool isInsideSingleRoom =
+                topLeft == topRight &&
+                topLeft == bottomLeft &&
+                topLeft == bottomRight;
+
+            if (isInsideSingleRoom)
+                _state.CurrentRoomGrid = topLeft;
+        }
+
+        private Room GetRoomAtGridOrNull(Point roomGrid)
+        {
+            if (roomGrid.X < 0 || roomGrid.X >= WorldConfig.GridSize || roomGrid.Y < 0 || roomGrid.Y >= WorldConfig.GridSize)
+                return null;
+
+            return _state.FloorMap[roomGrid.X, roomGrid.Y];
+        }
+
+        private void RefreshDoorStatesAround(Point roomGrid)
+        {
+            RefreshDoorTilesForRoom(roomGrid);
+            RefreshDoorTilesForRoom(new Point(roomGrid.X - 1, roomGrid.Y));
+            RefreshDoorTilesForRoom(new Point(roomGrid.X + 1, roomGrid.Y));
+            RefreshDoorTilesForRoom(new Point(roomGrid.X, roomGrid.Y - 1));
+            RefreshDoorTilesForRoom(new Point(roomGrid.X, roomGrid.Y + 1));
+        }
+
+        private void RefreshDoorTilesForRoom(Point roomGrid)
+        {
+            Room room = GetRoomAtGridOrNull(roomGrid);
+            if (room == null)
+                return;
+
+            UpdateDoorTile(room, 0, WorldConfig.RoomHeightTiles / 2, IsDoorwayOpen(roomGrid, -1, 0));
+            UpdateDoorTile(room, 0, WorldConfig.RoomHeightTiles / 2 + 1, IsDoorwayOpen(roomGrid, -1, 0));
+            UpdateDoorTile(room, WorldConfig.RoomWidthTiles - 1, WorldConfig.RoomHeightTiles / 2, IsDoorwayOpen(roomGrid, 1, 0));
+            UpdateDoorTile(room, WorldConfig.RoomWidthTiles - 1, WorldConfig.RoomHeightTiles / 2 + 1, IsDoorwayOpen(roomGrid, 1, 0));
+            UpdateDoorTile(room, WorldConfig.RoomWidthTiles / 2 - 1, 0, IsDoorwayOpen(roomGrid, 0, -1));
+            UpdateDoorTile(room, WorldConfig.RoomWidthTiles / 2, 0, IsDoorwayOpen(roomGrid, 0, -1));
+            UpdateDoorTile(room, WorldConfig.RoomWidthTiles / 2 - 1, WorldConfig.RoomHeightTiles - 1, IsDoorwayOpen(roomGrid, 0, 1));
+            UpdateDoorTile(room, WorldConfig.RoomWidthTiles / 2, WorldConfig.RoomHeightTiles - 1, IsDoorwayOpen(roomGrid, 0, 1));
+        }
+
+        private static void UpdateDoorTile(Room room, int tileX, int tileY, bool isOpen)
+        {
+            if (room.GetTile(tileX, tileY) is DoorTile doorTile)
+                doorTile.SetOpen(isOpen);
+        }
+
+        private void MovePlayerInsideRoom(Point roomGrid, Point previousRoomGrid)
+        {
+            int deltaX = roomGrid.X - previousRoomGrid.X;
+            int deltaY = roomGrid.Y - previousRoomGrid.Y;
+
+            if (Math.Abs(deltaX) + Math.Abs(deltaY) != 1)
+                return;
+
+            float localX = _state.Player.Position.X - roomGrid.X * WorldConfig.RoomWidthPx;
+            float localY = _state.Player.Position.Y - roomGrid.Y * WorldConfig.RoomHeightPx;
+            float safeInset = WorldConfig.TileSize + PlayerConfig.CollisionOffset + 0.01f;
+
+            if (deltaX == 1)
+                localX = Math.Max(localX, safeInset);
+            else if (deltaX == -1)
+                localX = Math.Min(localX, WorldConfig.RoomWidthPx - safeInset);
+            else if (deltaY == 1)
+                localY = Math.Max(localY, safeInset);
+            else if (deltaY == -1)
+                localY = Math.Min(localY, WorldConfig.RoomHeightPx - safeInset);
+
+            _state.Player.Position = new Vector2(
+                roomGrid.X * WorldConfig.RoomWidthPx + localX,
+                roomGrid.Y * WorldConfig.RoomHeightPx + localY
+            );
+        }
+
+        private void TryPressRoomButton(Room room)
+        {
+            ButtonTile buttonTile = room.ButtonTile;
+            if (buttonTile == null || buttonTile.IsPressed)
+                return;
+
+            float lx = _state.Player.Position.X % WorldConfig.RoomWidthPx;
+            float ly = _state.Player.Position.Y % WorldConfig.RoomHeightPx;
+
+            Rectangle playerRect = new Rectangle(
+                (int)lx - PlayerConfig.Radius,
+                (int)ly - PlayerConfig.Radius,
+                PlayerConfig.Size,
+                PlayerConfig.Size
+            );
+
+            Rectangle buttonRect = new Rectangle(
+                buttonTile.GridPosition.X * WorldConfig.TileSize,
+                buttonTile.GridPosition.Y * WorldConfig.TileSize,
+                WorldConfig.TileSize,
+                WorldConfig.TileSize
+            );
+
+            if (playerRect.Intersects(buttonRect))
+                room.PressButton();
+        }
+
+        private static bool ShouldLockRoom(Room room)
+        {
+            return room.HasButton || HasAliveEnemies(room);
+        }
+
+        private static bool AreUnlockRequirementsMet(Room room)
+        {
+            bool buttonSatisfied = !room.HasButton || room.IsButtonPressed;
+            return buttonSatisfied && !HasAliveEnemies(room);
+        }
+
+        private static bool HasAliveEnemies(Room room)
+        {
+            foreach (Enemy enemy in room.enemies)
+            {
+                if (enemy.IsAlive)
+                    return true;
             }
 
-            return room.Tiles[tx, ty] == TileType.Wall;
+            return false;
         }
 
         private static float GetEnemyRadius(Enemy enemy)
