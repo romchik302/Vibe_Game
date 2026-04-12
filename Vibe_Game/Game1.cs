@@ -19,7 +19,9 @@ namespace Vibe_Game
         private InputService _inputService;
         private PlayerContentLoader _contentLoader;
         private Camera _camera;
+        private Texture2D _pixelTexture;
         private Texture2D _playerTexture;
+        private MainMenuScene _mainMenuScene;
 
         public Game1()
         {
@@ -99,8 +101,10 @@ namespace Vibe_Game
             _playerTexture = _contentLoader.PlayerTexture;
             System.Diagnostics.Debug.WriteLine("Player texture loaded");
 
-            // 2. Сохранить текстуру в сервисах для доступа из других мест
-            Services.AddService(typeof(Texture2D), _playerTexture);
+            // 2. Создать единый 1x1 pixel texture для UI и тайлов
+            _pixelTexture = new Texture2D(GraphicsDevice, 1, 1);
+            _pixelTexture.SetData(new[] { Color.White });
+            Services.AddService(typeof(Texture2D), _pixelTexture);
 
             // Проверяем состояние
             System.Diagnostics.Debug.WriteLine($"GraphicsDevice: {GraphicsDevice != null}");
@@ -146,17 +150,10 @@ namespace Vibe_Game
 
             try
             {
-                // СОЗДАЁМ РЕНДЕРЕР С ТЕКСТУРОЙ
-                var playerRenderer = new PlayerRenderer(_playerTexture);
-
-                // Создаём игровую сцену с новым рендерером
-                var gameScene = new GameScene(this, playerRenderer, _inputService, _contentLoader);
-                _sceneManager.AddScene("game", gameScene);
-                System.Diagnostics.Debug.WriteLine("GameScene created");
-
-                // Переключаемся на неё
-                _sceneManager.SwitchTo("game");
-                System.Diagnostics.Debug.WriteLine("Switched to GameScene successfully");
+                _mainMenuScene = new MainMenuScene(this, _inputService);
+                _sceneManager.AddScene("main-menu", _mainMenuScene);
+                _sceneManager.SwitchTo("main-menu");
+                System.Diagnostics.Debug.WriteLine("Switched to MainMenuScene successfully");
             }
             catch (Exception ex)
             {
@@ -166,6 +163,25 @@ namespace Vibe_Game
             }
 
             System.Diagnostics.Debug.WriteLine("--- Initial scene loaded ---");
+        }
+
+        public void StartNewGame()
+        {
+            var playerRenderer = new PlayerRenderer(_playerTexture);
+            var gameScene = new GameScene(this, playerRenderer, _inputService, _contentLoader);
+            _sceneManager.AddScene("game", gameScene);
+            _sceneManager.SwitchTo("game");
+        }
+
+        public void ShowMainMenu()
+        {
+            if (_mainMenuScene == null)
+            {
+                _mainMenuScene = new MainMenuScene(this, _inputService);
+                _sceneManager.AddScene("main-menu", _mainMenuScene);
+            }
+
+            _sceneManager.SwitchTo("main-menu");
         }
 
         protected override void Update(GameTime gameTime)

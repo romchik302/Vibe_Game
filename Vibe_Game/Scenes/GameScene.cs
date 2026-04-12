@@ -24,6 +24,8 @@ namespace Vibe_Game.Scenes
         private GameSceneProjectileController _projectileController;
         private GameSceneRenderer _renderer;
         private GameSceneAttackContext _attackContext;
+        private bool _isPaused;
+        private int _selectedPauseOption;
 
         public GameScene(Game game, IPlayerRenderer pr, IInputService isrv, IPlayerContentLoader pcl)
             : base(game)
@@ -59,6 +61,21 @@ namespace Vibe_Game.Scenes
 
         public override void Update(GameTime gameTime)
         {
+            if (_inputService.IsActionPressed(InputAction.Pause))
+            {
+                _isPaused = !_isPaused;
+                if (_isPaused)
+                    _selectedPauseOption = 0;
+
+                return;
+            }
+
+            if (_isPaused)
+            {
+                UpdatePauseMenu();
+                return;
+            }
+
             _attackContext.Sync(gameTime);
 
             Vector2 oldPos = _state.Player.Position;
@@ -96,6 +113,9 @@ namespace Vibe_Game.Scenes
                 return;
 
             _renderer.Draw(_attackContext, GetCamera(), spriteBatch, pixel);
+
+            if (_isPaused)
+                _renderer.DrawPauseOverlay(spriteBatch, pixel, _selectedPauseOption);
         }
 
         private void LoadFloor(int floorIndex)
@@ -126,6 +146,45 @@ namespace Vibe_Game.Scenes
                 StartRoomGrid.X * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
                 StartRoomGrid.Y * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f
             );
+        }
+
+        private void UpdatePauseMenu()
+        {
+            if (IsMenuUpPressed())
+                _selectedPauseOption = (_selectedPauseOption - 1 + 2) % 2;
+
+            if (IsMenuDownPressed())
+                _selectedPauseOption = (_selectedPauseOption + 1) % 2;
+
+            if (!IsConfirmPressed())
+                return;
+
+            if (_selectedPauseOption == 0)
+            {
+                _isPaused = false;
+                return;
+            }
+
+            _isPaused = false;
+            ((Game1)GameInstance).ShowMainMenu();
+        }
+
+        private bool IsMenuUpPressed()
+        {
+            return _inputService.IsActionPressed(InputAction.MoveUp) ||
+                   _inputService.IsActionPressed(InputAction.ShootUp);
+        }
+
+        private bool IsMenuDownPressed()
+        {
+            return _inputService.IsActionPressed(InputAction.MoveDown) ||
+                   _inputService.IsActionPressed(InputAction.ShootDown);
+        }
+
+        private bool IsConfirmPressed()
+        {
+            return _inputService.IsActionPressed(InputAction.Fire) ||
+                   _inputService.IsActionPressed(InputAction.Interact);
         }
     }
 }

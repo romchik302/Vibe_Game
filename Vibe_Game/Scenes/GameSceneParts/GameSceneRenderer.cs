@@ -22,6 +22,7 @@ namespace Vibe_Game.Scenes
         private readonly GameSceneProjectileController _projectiles;
         private readonly GameSceneEnemyController _enemies;
         private SpriteFont _roomFont;
+        private Texture2D _tileTexture;
 
         public GameSceneRenderer(
             Game game,
@@ -38,6 +39,7 @@ namespace Vibe_Game.Scenes
         public void LoadContent(ContentManager content)
         {
             _roomFont = content.Load<SpriteFont>("room_font");
+            _tileTexture = content.Load<Texture2D>("player_sheet");
         }
 
         public void Draw(IAttackContext attackContext, Camera camera, SpriteBatch spriteBatch, Texture2D pixel)
@@ -73,6 +75,28 @@ namespace Vibe_Game.Scenes
             spriteBatch.End();
         }
 
+        public void DrawPauseOverlay(SpriteBatch spriteBatch, Texture2D pixel, int selectedOption)
+        {
+            if (_roomFont == null)
+                return;
+
+            Viewport viewport = _game.GraphicsDevice.Viewport;
+            Rectangle fullscreen = new Rectangle(0, 0, viewport.Width, viewport.Height);
+            Rectangle panel = new Rectangle(viewport.Width / 2 - 220, viewport.Height / 2 - 150, 440, 300);
+
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            spriteBatch.Draw(pixel, fullscreen, GameColors.MenuOverlay);
+            spriteBatch.Draw(pixel, panel, GameColors.MenuPanel);
+            spriteBatch.DrawRectangle(pixel, panel, GameColors.MenuOutline, 2);
+
+            DrawCenteredText(spriteBatch, "PAUSED", _roomFont, new Vector2(panel.Center.X, panel.Y + 58f), GameColors.RoomLabel, 1.2f, GameColors.RoomLabelShadow);
+            DrawCenteredText(spriteBatch, "ESC TO RESUME", _roomFont, new Vector2(panel.Center.X, panel.Y + 96f), GameColors.MenuMuted, 0.55f);
+
+            DrawPauseOption(spriteBatch, pixel, panel, 0, "CONTINUE", selectedOption == 0);
+            DrawPauseOption(spriteBatch, pixel, panel, 1, "EXIT TO MENU", selectedOption == 1);
+            spriteBatch.End();
+        }
+
         private void DrawSingleRoom(SpriteBatch spriteBatch, Texture2D pixel, Room room, int gx, int gy)
         {
             int wx = gx * WorldConfig.RoomWidthPx;
@@ -84,7 +108,7 @@ namespace Vibe_Game.Scenes
                 {
                     Color color = room.Tiles[tx, ty].Tint;
                     spriteBatch.Draw(
-                        pixel,
+                        _tileTexture ?? pixel,
                         new Rectangle(wx + tx * WorldConfig.TileSize, wy + ty * WorldConfig.TileSize, WorldConfig.TileSize, WorldConfig.TileSize),
                         color
                     );
@@ -259,6 +283,19 @@ namespace Vibe_Game.Scenes
 
                 spriteBatch.Draw(pixel, fillRect, new Color(90, 220, 110));
             }
+        }
+
+        private void DrawPauseOption(SpriteBatch spriteBatch, Texture2D pixel, Rectangle panel, int optionIndex, string label, bool isSelected)
+        {
+            Rectangle optionRect = new Rectangle(panel.X + 52, panel.Y + 146 + optionIndex * 58, panel.Width - 104, 42);
+            spriteBatch.Draw(pixel, optionRect, isSelected ? GameColors.MenuSelection : new Color(54, 52, 66));
+            DrawCenteredText(
+                spriteBatch,
+                label,
+                _roomFont,
+                new Vector2(optionRect.Center.X, optionRect.Center.Y),
+                isSelected ? GameColors.MenuBackground : GameColors.RoomLabel,
+                0.75f);
         }
     }
 }

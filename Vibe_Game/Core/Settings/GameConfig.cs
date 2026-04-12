@@ -69,5 +69,11 @@ namespace Vibe_Game.Core.Settings
         public static readonly Color RoomLabel = new Color(245, 245, 235);
         public static readonly Color RoomLabelShadow = new Color(20, 20, 26, 180);
         public static readonly Color FloorHint = new Color(232, 216, 160);
+        public static readonly Color MenuBackground = new Color(12, 10, 18);
+        public static readonly Color MenuPanel = new Color(28, 24, 36, 232);
+        public static readonly Color MenuOutline = new Color(170, 150, 120);
+        public static readonly Color MenuSelection = new Color(214, 162, 88);
+        public static readonly Color MenuMuted = new Color(170, 170, 176);
+        public static readonly Color MenuOverlay = new Color(8, 8, 12, 180);
     }
 }
