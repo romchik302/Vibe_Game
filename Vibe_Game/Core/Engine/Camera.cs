@@ -9,7 +9,7 @@ namespace Vibe_Game.Core.Engine
     {
         // Основные свойства
         public Vector2 Position { get; private set; }
-        public float Zoom { get; set; } = 2.0f; // Зум х2 для удобства (очень удобно, Ром, круто что это тут ваще не найти)))))))
+        public float Zoom { get; set; } = 2.65f; // Зум х2 для удобства (очень удобно, Ром, круто что это тут ваще не найти)))))))
         public float Rotation { get; set; }
 
         // Границы комнаты

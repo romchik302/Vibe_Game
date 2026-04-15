@@ -6,8 +6,8 @@ namespace Vibe_Game.Core.Settings
     {
         public const int TileSize = 32;
 
-        public const int RoomWidthTiles = 20;
-        public const int RoomHeightTiles = 11;
+        public const int RoomWidthTiles = 15;
+        public const int RoomHeightTiles = 9;
 
         public const int RoomWidthPx = RoomWidthTiles * TileSize;
         public const int RoomHeightPx = RoomHeightTiles * TileSize;
