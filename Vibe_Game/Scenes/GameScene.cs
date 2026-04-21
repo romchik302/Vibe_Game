@@ -99,6 +99,8 @@ namespace Vibe_Game.Scenes
             if (_state.IsPlayerStandingOnFloorExit && _inputService.IsActionPressed(InputAction.Interact))
                 LoadFloor(nextFloorIndex);
 
+            _world.UpdatePlayerFrictionByGround();
+
             _world.UpdateCamera(GetCamera());
 
             base.Update(gameTime);

@@ -534,5 +534,34 @@ namespace Vibe_Game.Scenes
             if (enemy is AdaptiveChasingEnemy) return EnemyConfig.DefaultChasingRadius;
             return 10f;
         }
+
+        public void UpdatePlayerFrictionByGround()
+        {
+            if (_state.Player == null) return;
+
+            Point roomGrid = GetRoomGridAtWorldPosition(_state.Player.Position);
+            Room room = GetRoomAtGridOrNull(roomGrid);
+            if (room == null) return;
+
+            float localX = _state.Player.Position.X - roomGrid.X * WorldConfig.RoomWidthPx;
+            float localY = _state.Player.Position.Y - roomGrid.Y * WorldConfig.RoomHeightPx;
+            int tileX = (int)(localX / WorldConfig.TileSize);
+            int tileY = (int)(localY / WorldConfig.TileSize);
+
+            if (tileX < 0 || tileX >= WorldConfig.RoomWidthTiles || tileY < 0 || tileY >= WorldConfig.RoomHeightTiles)
+                return;
+
+            Tile tile = room.GetTile(tileX, tileY);
+            float frictionMultiplier = 1f;
+
+            // Предположим, у вас есть способ определить лужу (например, tile.Type == TileType.Water)
+            // или через дополнительный флаг tile.ReducesFriction
+            if (tile != null && tile.ReducesFriction) 
+            {
+                frictionMultiplier = 0.3f;   // лужа уменьшает трение → игрок дольше скользит
+            }
+
+            _state.Player.SetMovementFrictionMultiplier(frictionMultiplier);
+        }
     }
 }

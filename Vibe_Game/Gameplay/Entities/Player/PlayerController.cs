@@ -6,10 +6,15 @@ namespace Vibe_Game.Gameplay.Entities.Player
 {
     public class PlayerController
     {
-        public IInputService _inputService;
+        private readonly IInputService _inputService;
+        private Vector2 _currentVelocity;
 
-        public float MoveSpeed { get; set; } = 200f;
-        public Vector2 CurrentVelocity { get; private set; }
+        public float Acceleration { get; set; } = 1800f;     // пикс/сек²
+        public float MaxSpeed { get; set; } = 200f;          // пикс/сек
+        public float BaseFriction { get; set; } = 1200f;      // торможение без ввода (пикс/сек²)
+        public float CurrentFrictionMultiplier { get; set; } = 1f;
+
+        public Vector2 CurrentVelocity => _currentVelocity;
         public Vector2 ShootDirection { get; private set; }
 
         private readonly List<InputAction> _shootPressOrder = new();
@@ -22,27 +27,45 @@ namespace Vibe_Game.Gameplay.Entities.Player
 
         public void Update(GameTime gameTime)
         {
-            HandleMovement();
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            HandleMovement(dt);
             UpdateShootDirectionIsaacStyle();
         }
 
-        private void HandleMovement()
+        private void HandleMovement(float dt)
         {
             Vector2 inputDirection = Vector2.Zero;
+            if (_inputService.IsActionDown(InputAction.MoveUp)) inputDirection.Y -= 1;
+            if (_inputService.IsActionDown(InputAction.MoveDown)) inputDirection.Y += 1;
+            if (_inputService.IsActionDown(InputAction.MoveLeft)) inputDirection.X -= 1;
+            if (_inputService.IsActionDown(InputAction.MoveRight)) inputDirection.X += 1;
+            if (inputDirection != Vector2.Zero) inputDirection.Normalize();
 
-            if (_inputService.IsActionDown(InputAction.MoveUp))
-                inputDirection.Y -= 1;
-            if (_inputService.IsActionDown(InputAction.MoveDown))
-                inputDirection.Y += 1;
-            if (_inputService.IsActionDown(InputAction.MoveLeft))
-                inputDirection.X -= 1;
-            if (_inputService.IsActionDown(InputAction.MoveRight))
-                inputDirection.X += 1;
-
+            // Ускорение при наличии ввода
             if (inputDirection != Vector2.Zero)
-                inputDirection.Normalize();
+            {
+                Vector2 targetVelocity = inputDirection * MaxSpeed;
+                Vector2 deltaV = targetVelocity - _currentVelocity;
+                float maxDelta = Acceleration * dt;
+                if (deltaV.LengthSquared() > maxDelta * maxDelta)
+                    deltaV = Vector2.Normalize(deltaV) * maxDelta;
+                _currentVelocity += deltaV;
+            }
+            else
+            {
+                // Торможение (трение)
+                float friction = BaseFriction * CurrentFrictionMultiplier;
+                float frictionDelta = friction * dt;
+                float speed = _currentVelocity.Length();
+                if (speed > frictionDelta)
+                    _currentVelocity -= _currentVelocity / speed * frictionDelta;
+                else
+                    _currentVelocity = Vector2.Zero;
+            }
 
-            CurrentVelocity = inputDirection * MoveSpeed;
+            // Ограничение максимальной скорости (на всякий случай)
+            if (_currentVelocity.LengthSquared() > MaxSpeed * MaxSpeed)
+                _currentVelocity = Vector2.Normalize(_currentVelocity) * MaxSpeed;
         }
 
         /// <summary>
@@ -65,6 +88,8 @@ namespace Vibe_Game.Gameplay.Entities.Player
                 ShootDirection = ToCardinal(_shootPressOrder[0]);
         }
 
+
+
         private void TryRegisterShoot(InputAction action)
         {
             if (!_inputService.IsActionPressed(action))
@@ -79,7 +104,10 @@ namespace Vibe_Game.Gameplay.Entities.Player
                 return;
             _shootPressOrder.Remove(action);
         }
-
+        public void SetFrictionMultiplier(float multiplier)
+        {
+            CurrentFrictionMultiplier = MathHelper.Max(0.1f, multiplier);
+        }
         private static Vector2 ToCardinal(InputAction action)
         {
             return action switch

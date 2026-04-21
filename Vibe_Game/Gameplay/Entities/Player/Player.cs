@@ -98,7 +98,7 @@ namespace Vibe_Game.Gameplay.Entities.Player
             else
             {
                 // Возвращаем нормальный цвет после окончания неуязвимости
-                if (Color == Color.Red)
+                if (Color != Color.White)
                     Color = Color.White;
             }
 
@@ -135,7 +135,7 @@ namespace Vibe_Game.Gameplay.Entities.Player
             _invincibilityTimer = InvincibilityDuration;
 
             // Визуальный эффект - мигание красным (можно добавить в рендерер)
-            Color = Color.Red;
+            Color = Color.LightCoral;
         }
 
         public bool IsInvincible => _invincibilityTimer > 0;
@@ -146,6 +146,10 @@ namespace Vibe_Game.Gameplay.Entities.Player
                 || _inputService.IsActionDown(InputAction.ShootDown)
                 || _inputService.IsActionDown(InputAction.ShootLeft)
                 || _inputService.IsActionDown(InputAction.ShootRight);
+        }
+        public void SetMovementFrictionMultiplier(float multiplier)
+        {
+            Controller.SetFrictionMultiplier(multiplier);
         }
     }
 }
