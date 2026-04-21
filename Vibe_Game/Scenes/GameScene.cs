@@ -45,7 +45,7 @@ namespace Vibe_Game.Scenes
 
             Vector2 startPos = GetStartWorldPosition();
             _state.Player = new Player(startPos, _playerRenderer, _inputService, _contentLoader, _attackContext);
-            _state.Player.EquippedWeapon = new SwordWeapon();
+            _state.Player.EquippedWeapon = new ForwardProjectileWeapon(0.3f, 250f, 5, 10f, 3f);
 
             LoadFloor(floorIndex: 1);
 
