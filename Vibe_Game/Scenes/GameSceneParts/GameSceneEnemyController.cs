@@ -149,6 +149,7 @@ namespace Vibe_Game.Scenes
             _world.RefreshEnemyOccupancy();
         }
 
+
         public void Draw(SpriteBatch spriteBatch)
         {
             for (int ex = 0; ex < WorldConfig.GridSize; ex++)
@@ -377,6 +378,29 @@ namespace Vibe_Game.Scenes
                     }
                 }
             }
+        }
+
+        public List<Enemy> GetEnemies()
+        {
+            var result = new List<Enemy>();
+
+            for (int x = 0; x < WorldConfig.GridSize; x++)
+            {
+                for (int y = 0; y < WorldConfig.GridSize; y++)
+                {
+                    Room room = _state.FloorMap[x, y];
+                    if (room?.enemies == null)
+                        continue;
+
+                    foreach (var enemy in room.enemies)
+                    {
+                        if (enemy.IsAlive)
+                            result.Add(enemy);
+                    }
+                }
+            }
+
+            return result;
         }
 
         private static bool CanSpawnRegularEnemies(LevelGenerator.RoomType roomType)

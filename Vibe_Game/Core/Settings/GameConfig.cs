@@ -40,7 +40,7 @@ namespace Vibe_Game.Core.Settings
         public const int AdaptiveChasingMaxHealth = 20;
         public const float AdaptiveChasingRadius = 15f;
         public const float AdaptiveChasingInitialRadius = 90f;
-        public const float AdaptiveChasingExpandedRadius = 140f;
+        public const float AdaptiveChasingExpandedRadius = 200f;
         public const float AdaptiveChasingSpawnChance = 0.3f;
     }
 

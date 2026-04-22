@@ -10,7 +10,7 @@ namespace Vibe_Game.Gameplay.Entities.Player
         private Vector2 _currentVelocity;
 
         public float Acceleration { get; set; } = 1800f;     // пикс/сек²
-        public float MaxSpeed { get; set; } = 200f;          // пикс/сек
+        public float MaxSpeed { get; set; } = 150f;          // пикс/сек
         public float BaseFriction { get; set; } = 1200f;      // торможение без ввода (пикс/сек²)
         public float CurrentFrictionMultiplier { get; set; } = 1f;
 

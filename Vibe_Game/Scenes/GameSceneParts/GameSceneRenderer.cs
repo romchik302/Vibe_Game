@@ -1,11 +1,13 @@
-using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using System;
+using System.Collections.Generic;
 using Vibe_Game.Core.Engine;
 using Vibe_Game.Core.Services;
 using Vibe_Game.Core.Settings;
 using Vibe_Game.Core.Utilities;
+using Vibe_Game.Gameplay.Entities;
 using Vibe_Game.Gameplay.Weapons;
 
 namespace Vibe_Game.Scenes
@@ -57,10 +59,21 @@ namespace Vibe_Game.Scenes
                 }
             }
 
-            _projectiles.Draw(spriteBatch, pixel);
-            _enemies.Draw(spriteBatch);
-            _state.Player.Draw(spriteBatch);
+            var drawables = new List<Entity>();
+
+            drawables.AddRange(_enemies.GetEnemies());
+            drawables.Add(_state.Player);
+
+            // сортировка по Y
+            drawables.Sort((a, b) => a.Position.Y.CompareTo(b.Position.Y));
+
+            // отрисовка
+            foreach (var d in drawables)
+                d.Draw(spriteBatch);
             DrawCurrentRoomLabel(spriteBatch);
+
+            // Отрисовка проджектайлов
+            _projectiles.Draw(spriteBatch, pixel);
 
 #if DEBUG
             if (_state.Player.EquippedWeapon is SwordWeapon sword)

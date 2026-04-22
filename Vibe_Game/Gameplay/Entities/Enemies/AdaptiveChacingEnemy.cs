@@ -53,6 +53,12 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
 
         CheckPlayerEnteredRadius(distanceToPlayer);
 
+        if (Health < MaxHealth && !_hasPlayerEnteredRadius)
+        {
+            _hasPlayerEnteredRadius = true;
+            _currentChaseRadius = _expandedChaseRadius;
+        }
+
         if (distanceToPlayer > _currentChaseRadius)
         {
             Velocity = Vector2.Zero;

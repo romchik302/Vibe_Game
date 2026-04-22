@@ -9,36 +9,48 @@ namespace Vibe_Game.Gameplay.Entities.Enemies;
 public class ChasingEnemy : Enemy
 {
     private readonly IWallCollisionChecker _collision;
-    protected readonly float _collisionRadius;
+
+    protected readonly float _collisionRadius; // базовый (визуальный)
     protected readonly float _moveSpeed;
+
+    // Хитбоксы
+    protected float _bodyRadius;   // самый маленький (стены)
+    protected float _attackRadius; // чуть больше (урон)
 
     protected Texture2D _pixel;
     protected Texture2D _spriteSheet;
     protected Rectangle _sourceRect;
+
     protected int _frameWidth;
     protected int _frameHeight;
     protected int _frameCount;
     protected int _frameIndex;
+
     protected float _animTimer;
-    protected virtual float AnimFrameDuration => 0.1f;
+    protected virtual float AnimFrameDuration => 0.2f;
+
     public Vector2 ChaseTarget { get; set; }
 
     public ChasingEnemy(
         Vector2 position,
-        IWallCollisionChecker collision,  // Изменили интерфейс
+        IWallCollisionChecker collision,
         float moveSpeed,
         int maxHealth,
         float collisionRadius)
         : base(position, maxHealth)
     {
-        _collision = collision ?? throw new System.ArgumentNullException(nameof(collision));
+        _collision = collision ?? throw new ArgumentNullException(nameof(collision));
         _moveSpeed = moveSpeed;
         _collisionRadius = collisionRadius;
+
+        // Настройка хитбоксов
+        _bodyRadius = collisionRadius * 0.8f;
+        _attackRadius = collisionRadius * 0.9f;
+
         Color = Color.White;
-        RecoilResistance = 0.7f;  // Средне отскакивает (50% сопротивление)
+        RecoilResistance = 0.7f;
     }
 
-    /// <summary>Удобный конструктор с константами из <see cref="EnemyConfig"/>.</summary>
     public ChasingEnemy(Vector2 position, IWallCollisionChecker collision)
         : this(
             position,
@@ -58,7 +70,7 @@ public class ChasingEnemy : Enemy
 
     protected override float GetCollisionRadius()
     {
-        return _collisionRadius;
+        return _bodyRadius;
     }
 
     protected override void UpdateEnemy(GameTime gameTime)
@@ -70,6 +82,7 @@ public class ChasingEnemy : Enemy
 
         Vector2 toTarget = ChaseTarget - Position;
         UpdateFacingFromDirection(toTarget, allowVertical: false);
+
         if (toTarget.LengthSquared() < 2f)
         {
             Velocity = Vector2.Zero;
@@ -79,47 +92,72 @@ public class ChasingEnemy : Enemy
         toTarget.Normalize();
         Vector2 delta = toTarget * (_moveSpeed * dt);
 
-        // Используем полную проверку коллизий со стенами (как у игрока)
         Position = ResolveWallCollision(Position, delta);
         Velocity = Vector2.Zero;
     }
 
-    /// <summary>
-    /// Полная проверка коллизий со стенами (включая внутренние)
-    /// </summary>
     protected Vector2 ResolveWallCollision(Vector2 oldPos, Vector2 delta)
     {
         Vector2 target = oldPos + delta;
         Vector2 final = target;
 
-        // Проверяем движение по X
-        if (delta.X != 0f && HasWallCollisionAt(new Vector2(target.X, oldPos.Y)))
+        Vector2 bodyCenter = GetBodyCenter(target);
+
+        if (delta.X != 0f && HasWallCollisionAt(new Vector2(bodyCenter.X, oldPos.Y)))
             final.X = oldPos.X;
 
-        // Проверяем движение по Y (используя уже исправленный X)
-        if (delta.Y != 0f && HasWallCollisionAt(new Vector2(final.X, target.Y)))
+        bodyCenter = GetBodyCenter(new Vector2(final.X, target.Y));
+
+        if (delta.Y != 0f && HasWallCollisionAt(new Vector2(final.X, bodyCenter.Y)))
             final.Y = oldPos.Y;
 
         return final;
     }
 
-    /// <summary>
-    /// Проверяет 4 угла хитбокса на коллизию со стенами
-    /// </summary>
     private bool HasWallCollisionAt(Vector2 centerWorld)
     {
-        float o = _collisionRadius;
+        float o = _bodyRadius;
+
         return _collision.IsPointBlockedByWall(new Vector2(centerWorld.X - o, centerWorld.Y - o))
             || _collision.IsPointBlockedByWall(new Vector2(centerWorld.X + o, centerWorld.Y - o))
             || _collision.IsPointBlockedByWall(new Vector2(centerWorld.X - o, centerWorld.Y + o))
             || _collision.IsPointBlockedByWall(new Vector2(centerWorld.X + o, centerWorld.Y + o));
     }
 
+    // >>> ГЛАВНОЕ: смещённый центр под "тело"
+    protected Vector2 GetBodyCenter(Vector2 basePos)
+    {
+        float offsetX = _frameWidth * 0.25f;
+
+        if (Facing == FacingDirection.Left)
+            offsetX = -offsetX;
+
+        return basePos + new Vector2(offsetX, 0);
+    }
+
+    protected Vector2 GetBodyCenter()
+    {
+        return GetBodyCenter(Position);
+    }
+
     public override Rectangle GetBounds()
     {
-        int r = (int)_collisionRadius;
+        var center = GetBodyCenter();
+
+        int r = (int)_bodyRadius;
         int d = r * 2;
-        return new Rectangle((int)Position.X - r, (int)Position.Y - r, d, d);
+
+        return new Rectangle((int)center.X - r, (int)center.Y - r, d, d);
+    }
+
+    public Rectangle GetAttackBounds()
+    {
+        var center = GetBodyCenter();
+
+        int r = (int)_attackRadius;
+        int d = r * 2;
+
+        return new Rectangle((int)center.X - r, (int)center.Y - r, d, d);
     }
 
     public override void Draw(SpriteBatch spriteBatch)
@@ -129,17 +167,21 @@ public class ChasingEnemy : Enemy
 
         if (_spriteSheet != null)
         {
+            // >>> Смещаем origin вправо (тело справа)
+            var origin = new Vector2(_frameWidth * 0.75f, _frameHeight / 2f);
+
             spriteBatch.Draw(
                 _spriteSheet,
                 Position,
                 _sourceRect,
                 Color.White,
                 0f,
-                new Vector2(_frameWidth / 2f, _frameHeight / 2f),
+                origin,
                 1f,
                 GetHorizontalSpriteEffect(),
                 0f
             );
+
             return;
         }
 
@@ -150,7 +192,6 @@ public class ChasingEnemy : Enemy
         }
 
         var rect = GetBounds();
-        // Красный цвет для преследующего врага (отличается от фиолетового летающего)
         spriteBatch.Draw(_pixel, rect, new Color(255, 50, 50, 230));
     }
 
@@ -164,9 +205,11 @@ public class ChasingEnemy : Enemy
             return;
 
         _frameHeight = _spriteSheet.Height;
-        _frameWidth = _frameHeight > 0 ? _frameHeight : _spriteSheet.Width;
-        _frameWidth = Math.Clamp(_frameWidth, 1, _spriteSheet.Width);
-        _frameCount = Math.Max(1, _spriteSheet.Width / _frameWidth);
+
+        // >>> ФИКС: ровно 4 кадра
+        _frameCount = 4;
+        _frameWidth = _spriteSheet.Width / _frameCount;
+
         _sourceRect = new Rectangle(0, 0, _frameWidth, _frameHeight);
     }
 
@@ -176,11 +219,13 @@ public class ChasingEnemy : Enemy
             return;
 
         _animTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
         if (_animTimer < AnimFrameDuration)
             return;
 
         _animTimer = 0f;
         _frameIndex = (_frameIndex + 1) % _frameCount;
+
         _sourceRect.X = _frameIndex * _frameWidth;
     }
 }
