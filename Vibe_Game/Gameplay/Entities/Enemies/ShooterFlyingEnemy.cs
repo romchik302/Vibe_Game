@@ -7,17 +7,13 @@ namespace Vibe_Game.Gameplay.Entities.Enemies;
 
 public sealed class ShooterFlyingEnemy : FlyingEnemy
 {
-    private readonly Random _rng = new();
-    private bool _wasPlayerInsideAggro;
-    private bool _isInAttackStop;
-    private bool _hasShotOnCurrentStop;
-    private float _attackStopTimeLeft;
+    private float _shotCooldownLeft;
 
     public Action<ProjectileSpawnArgs> ProjectileSpawner { get; set; }
 
     public float AggroRadius { get; set; } = EnemyConfig.ShooterAggroRadius;
-    public float StopDurationMin { get; set; } = EnemyConfig.ShooterStopDurationMin;
-    public float StopDurationMax { get; set; } = EnemyConfig.ShooterStopDurationMax;
+    public float ShotIntervalSeconds { get; set; } = EnemyConfig.ShooterShotIntervalSeconds;
+    public float ReentryShotCooldownSeconds { get; set; } = EnemyConfig.ShooterReentryShotCooldownSeconds;
     public float ShotSpeed { get; set; } = EnemyConfig.ShooterProjectileSpeed;
     public float ShotLifetimeSeconds { get; set; } = EnemyConfig.ShooterProjectileLifetime;
     public float ShotRadius { get; set; } = EnemyConfig.ShooterProjectileRadius;
@@ -50,45 +46,42 @@ public sealed class ShooterFlyingEnemy : FlyingEnemy
         float distanceToPlayer = Vector2.Distance(Position, ChaseTarget);
         bool isInsideAggro = distanceToPlayer <= AggroRadius;
 
-        if (!_isInAttackStop && isInsideAggro && !_wasPlayerInsideAggro)
-            BeginAttackStop();
-
-        _wasPlayerInsideAggro = isInsideAggro;
-
-        if (_isInAttackStop)
+        if (isInsideAggro)
         {
-            UpdateAttackStop(dt);
+            // Прокручиваем базовую анимацию, но без движения.
+            Vector2 cachedTarget = ChaseTarget;
+            ChaseTarget = Position;
+            base.UpdateEnemy(gameTime);
+            ChaseTarget = cachedTarget;
+
+            UpdateAttackMode(dt);
             return;
         }
 
         base.UpdateEnemy(gameTime);
     }
 
-    private void BeginAttackStop()
+    private void UpdateAttackMode(float dt)
     {
-        _isInAttackStop = true;
-        _hasShotOnCurrentStop = false;
-        _attackStopTimeLeft = NextFloat(StopDurationMin, StopDurationMax);
+        Vector2 toPlayer = ChaseTarget - Position;
+        UpdateFacingFromDirection(toPlayer, allowVertical: false);
+
         Velocity = Vector2.Zero;
         ResetRandomMovementBehavior();
-        TryShootAtPlayer();
-    }
-
-    private void UpdateAttackStop(float dt)
-    {
-        Velocity = Vector2.Zero;
-        _attackStopTimeLeft -= dt;
-        if (_attackStopTimeLeft > 0f)
-            return;
-
-        _isInAttackStop = false;
-        _hasShotOnCurrentStop = false;
-        _attackStopTimeLeft = 0f;
+        _shotCooldownLeft -= dt;
+        if (_shotCooldownLeft <= 0f)
+        {
+            TryShootAtPlayer();
+            _shotCooldownLeft = MathF.Max(
+                0.05f,
+                MathF.Max(ShotIntervalSeconds, ReentryShotCooldownSeconds)
+            );
+        }
     }
 
     private void TryShootAtPlayer()
     {
-        if (_hasShotOnCurrentStop || ProjectileSpawner == null)
+        if (ProjectileSpawner == null)
             return;
 
         Vector2 toPlayer = ChaseTarget - Position;
@@ -107,15 +100,5 @@ public sealed class ShooterFlyingEnemy : FlyingEnemy
             RecoilForce = ShotRecoilForce,
             IsFriendlyToPlayer = false
         });
-
-        _hasShotOnCurrentStop = true;
-    }
-
-    private float NextFloat(float min, float max)
-    {
-        if (max < min)
-            (min, max) = (max, min);
-
-        return min + (float)_rng.NextDouble() * (max - min);
     }
 }

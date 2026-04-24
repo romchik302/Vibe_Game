@@ -58,13 +58,13 @@ public abstract class Enemy : Entity
     private int _lateralSign = 1;
 
     public float RandomBehaviorChance { get; set; } = 0.18f;
-    public float RandomPauseMinDuration { get; set; } = 0.3f;
-    public float RandomPauseMaxDuration { get; set; } = 0.8f;
+    public float RandomPauseMinDuration { get; set; } = 0.1f;
+    public float RandomPauseMaxDuration { get; set; } = 0.4f;
     public float RandomSideDashMinDuration { get; set; } = 0.18f;
-    public float RandomSideDashMaxDuration { get; set; } = 0.45f;
-    public float RandomSideDashSpeedMultiplier { get; set; } = 1.35f;
-    public float RandomZigzagMinDuration { get; set; } = 0.35f;
-    public float RandomZigzagMaxDuration { get; set; } = 0.9f;
+    public float RandomSideDashMaxDuration { get; set; } = 0.35f;
+    public float RandomSideDashSpeedMultiplier { get; set; } = 1.25f;
+    public float RandomZigzagMinDuration { get; set; } = 0.25f;
+    public float RandomZigzagMaxDuration { get; set; } = 0.4f;
     public float RandomZigzagDirectionChangeInterval { get; set; } = 0.12f;
     public float RandomZigzagAmplitude { get; set; } = 1.1f;
     public float RandomZigzagSpeedMultiplier { get; set; } = 1.1f;

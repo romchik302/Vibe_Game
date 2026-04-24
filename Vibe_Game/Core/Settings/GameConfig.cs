@@ -27,7 +27,7 @@ namespace Vibe_Game.Core.Settings
     public static class EnemyConfig
     {
         public const int DefaultFlyingRadius = 8;
-        public const float DefaultFlyingMoveSpeed = 100f;
+        public const float DefaultFlyingMoveSpeed = 85f;
         public const int DefaultFlyingMaxHealth = 8;
         public const float FlyingSpawnChancePerRoom = 0.45f;
 
@@ -44,15 +44,15 @@ namespace Vibe_Game.Core.Settings
         public const float AdaptiveChasingSpawnChance = 0.3f;
 
         public const float ShooterRadius = 10f;
-        public const float ShooterMoveSpeed = 85f;
+        public const float ShooterMoveSpeed = 80f;
         public const int ShooterMaxHealth = 12;
         public const float ShooterAggroRadius = 150f;
-        public const float ShooterStopDurationMin = 0.5f;
-        public const float ShooterStopDurationMax = 1.0f;
+        public const float ShooterShotIntervalSeconds = 0.7f;
+        public const float ShooterReentryShotCooldownSeconds = 0.55f;
         public const float ShooterProjectileSpeed = 240f;
         public const int ShooterProjectileDamage = 1;
         public const float ShooterProjectileLifetime = 2.2f;
-        public const float ShooterProjectileRadius = 5f;
+        public const float ShooterProjectileRadius = 3f;
         public const float ShooterProjectileRecoilForce = 0f;
         public const float ShooterSpawnChancePerRoom = 0.2f;
     }
