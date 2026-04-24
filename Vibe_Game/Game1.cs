@@ -1,6 +1,7 @@
 ﻿// Vibe_Game/Game1.cs (полная рабочая версия)
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using System;
 using Vibe_Game.Core.Engine;
 using Vibe_Game.Core.Services;
@@ -22,6 +23,10 @@ namespace Vibe_Game
         private Texture2D _pixelTexture;
         private Texture2D _playerTexture;
         private MainMenuScene _mainMenuScene;
+        private KeyboardState _previousKeyboardState;
+        private RenderTarget2D _sceneRenderTarget;
+        private const int VirtualWidth = 1280;
+        private const int VirtualHeight = 720;
 
         public Game1()
         {
@@ -29,8 +34,9 @@ namespace Vibe_Game
             Content.RootDirectory = "Content";
 
             // Простые настройки
-            _graphics.PreferredBackBufferWidth = 1280;
-            _graphics.PreferredBackBufferHeight = 720;
+            _graphics.PreferredBackBufferWidth = VirtualWidth;
+            _graphics.PreferredBackBufferHeight = VirtualHeight;
+            _graphics.HardwareModeSwitch = false; // Borderless fullscreen: быстрый toggle и масштабирование содержимого
             IsMouseVisible = true;
 
             System.Diagnostics.Debug.WriteLine("Game1 constructor completed");
@@ -105,6 +111,7 @@ namespace Vibe_Game
             _pixelTexture = new Texture2D(GraphicsDevice, 1, 1);
             _pixelTexture.SetData(new[] { Color.White });
             Services.AddService(typeof(Texture2D), _pixelTexture);
+            EnsureSceneRenderTarget();
 
             // Проверяем состояние
             System.Diagnostics.Debug.WriteLine($"GraphicsDevice: {GraphicsDevice != null}");
@@ -188,18 +195,69 @@ namespace Vibe_Game
         {
             // Обновляем InputManager каждый кадр
             _inputService.Update();
+            HandleFullscreenToggle();
 
             // Базовое обновление (включает обновление SceneManager)
             base.Update(gameTime);
         }
 
+        private void HandleFullscreenToggle()
+        {
+            KeyboardState keyboard = Keyboard.GetState();
+            bool fPressedNow = keyboard.IsKeyDown(Keys.F);
+            bool fPressedPrev = _previousKeyboardState.IsKeyDown(Keys.F);
+
+            if (fPressedNow && !fPressedPrev)
+            {
+                _graphics.IsFullScreen = !_graphics.IsFullScreen;
+                _graphics.ApplyChanges();
+            }
+
+            _previousKeyboardState = keyboard;
+        }
+
         protected override void Draw(GameTime gameTime)
         {
-            // Очистка экрана
+            EnsureSceneRenderTarget();
+
+            // 1) Рисуем всю сцену в фиксированное "виртуальное" окно 1280x720.
+            // Это сохраняет один и тот же обзор комнаты в окне и в fullscreen.
+            GraphicsDevice.SetRenderTarget(_sceneRenderTarget);
+            GraphicsDevice.Clear(Color.Black);
+            base.Draw(gameTime);
+
+            // 2) Растягиваем готовый кадр на весь экран.
+            GraphicsDevice.SetRenderTarget(null);
             GraphicsDevice.Clear(Color.Black);
 
-            // Отрисовка происходит в SceneManager
-            base.Draw(gameTime);
+            _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            _spriteBatch.Draw(
+                _sceneRenderTarget,
+                destinationRectangle: new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height),
+                color: Color.White
+            );
+            _spriteBatch.End();
+        }
+
+        private void EnsureSceneRenderTarget()
+        {
+            if (_sceneRenderTarget != null &&
+                !_sceneRenderTarget.IsDisposed &&
+                _sceneRenderTarget.Width == VirtualWidth &&
+                _sceneRenderTarget.Height == VirtualHeight)
+                return;
+
+            _sceneRenderTarget?.Dispose();
+            _sceneRenderTarget = new RenderTarget2D(
+                GraphicsDevice,
+                VirtualWidth,
+                VirtualHeight,
+                false,
+                SurfaceFormat.Color,
+                DepthFormat.None,
+                0,
+                RenderTargetUsage.DiscardContents
+            );
         }
     }
 }

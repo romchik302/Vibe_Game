@@ -38,8 +38,8 @@ namespace Vibe_Game.Scenes
         public override void Initialize()
         {
             _world = new GameSceneWorld(_state);
-            _enemyController = new GameSceneEnemyController(_state, _world);
             _projectileController = new GameSceneProjectileController(_state, _world);
+            _enemyController = new GameSceneEnemyController(_state, _world, _projectileController);
             _renderer = new GameSceneRenderer(GameInstance, _state, _projectileController, _enemyController);
             _attackContext = new GameSceneAttackContext(_state, _world, _projectileController, _enemyController);
 

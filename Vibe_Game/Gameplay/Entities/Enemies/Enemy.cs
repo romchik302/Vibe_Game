@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using System;
 namespace Vibe_Game.Gameplay.Entities.Enemies;
 
 /// <summary>
@@ -10,6 +11,15 @@ namespace Vibe_Game.Gameplay.Entities.Enemies;
 /// </summary>
 public abstract class Enemy : Entity
 {
+    protected enum RandomMovementMode
+    {
+        None,
+        Pause,
+        SideDash,
+        Zigzag,
+        Orbit
+    }
+
     protected enum FacingDirection
     {
         Right,
@@ -40,6 +50,29 @@ public abstract class Enemy : Entity
     /// <summary>Коэффициент затухания отдачи (чем меньше, тем дольше длится отдача).</summary>
     private const float RecoilDamping = 0.85f;
     protected FacingDirection Facing { get; private set; } = FacingDirection.Right;
+    private static readonly System.Random SharedRandom = new();
+
+    private RandomMovementMode _randomMovementMode = RandomMovementMode.None;
+    private float _randomMovementTimeLeft = 0f;
+    private float _zigzagDirectionTimeLeft = 0f;
+    private int _lateralSign = 1;
+
+    public float RandomBehaviorChance { get; set; } = 0.18f;
+    public float RandomPauseMinDuration { get; set; } = 0.3f;
+    public float RandomPauseMaxDuration { get; set; } = 0.8f;
+    public float RandomSideDashMinDuration { get; set; } = 0.18f;
+    public float RandomSideDashMaxDuration { get; set; } = 0.45f;
+    public float RandomSideDashSpeedMultiplier { get; set; } = 1.35f;
+    public float RandomZigzagMinDuration { get; set; } = 0.35f;
+    public float RandomZigzagMaxDuration { get; set; } = 0.9f;
+    public float RandomZigzagDirectionChangeInterval { get; set; } = 0.12f;
+    public float RandomZigzagAmplitude { get; set; } = 1.1f;
+    public float RandomZigzagSpeedMultiplier { get; set; } = 1.1f;
+    public float RandomOrbitMinDuration { get; set; } = 0.45f;
+    public float RandomOrbitMaxDuration { get; set; } = 1.1f;
+    public float RandomOrbitInwardWeight { get; set; } = 0.55f;
+    public float RandomOrbitLateralWeight { get; set; } = 1.1f;
+    public float RandomOrbitSpeedMultiplier { get; set; } = 1.15f;
 
     protected Enemy(Vector2 position, int maxHealth)
     {
@@ -184,4 +217,119 @@ public abstract class Enemy : Entity
         base.Draw(spriteBatch);
     }
 
+    protected Vector2 GetMovementDirectionWithRandomBehavior(Vector2 toTarget, float dt, out float speedMultiplier)
+    {
+        speedMultiplier = 1f;
+        if (toTarget.LengthSquared() < 0.0001f)
+            return Vector2.Zero;
+
+        Vector2 chaseDir = Vector2.Normalize(toTarget);
+        AdvanceOrStartRandomMovement(dt);
+
+        switch (_randomMovementMode)
+        {
+            case RandomMovementMode.Pause:
+                speedMultiplier = 0f;
+                return Vector2.Zero;
+
+            case RandomMovementMode.SideDash:
+                speedMultiplier = RandomSideDashSpeedMultiplier;
+                return GetPerpendicular(chaseDir, _lateralSign);
+
+            case RandomMovementMode.Zigzag:
+                speedMultiplier = RandomZigzagSpeedMultiplier;
+                _zigzagDirectionTimeLeft -= dt;
+                if (_zigzagDirectionTimeLeft <= 0f)
+                {
+                    _lateralSign *= -1;
+                    _zigzagDirectionTimeLeft = MathF.Max(0.02f, RandomZigzagDirectionChangeInterval);
+                }
+
+                Vector2 zigzag = chaseDir + GetPerpendicular(chaseDir, _lateralSign) * RandomZigzagAmplitude;
+                return zigzag.LengthSquared() > 0.0001f ? Vector2.Normalize(zigzag) : chaseDir;
+
+            case RandomMovementMode.Orbit:
+                speedMultiplier = RandomOrbitSpeedMultiplier;
+                Vector2 orbit = chaseDir * RandomOrbitInwardWeight
+                    + GetPerpendicular(chaseDir, _lateralSign) * RandomOrbitLateralWeight;
+                return orbit.LengthSquared() > 0.0001f ? Vector2.Normalize(orbit) : chaseDir;
+
+            default:
+                return chaseDir;
+        }
+    }
+
+    protected void ResetRandomMovementBehavior()
+    {
+        _randomMovementMode = RandomMovementMode.None;
+        _randomMovementTimeLeft = 0f;
+        _zigzagDirectionTimeLeft = 0f;
+    }
+
+    private void AdvanceOrStartRandomMovement(float dt)
+    {
+        if (_randomMovementMode != RandomMovementMode.None)
+        {
+            _randomMovementTimeLeft -= dt;
+            if (_randomMovementTimeLeft <= 0f)
+            {
+                _randomMovementMode = RandomMovementMode.None;
+                _randomMovementTimeLeft = 0f;
+            }
+
+            return;
+        }
+
+        float chanceRoll = MathF.Max(0f, RandomBehaviorChance) * dt;
+        if (SharedRandom.NextDouble() >= chanceRoll)
+            return;
+
+        StartRandomMovement();
+    }
+
+    private void StartRandomMovement()
+    {
+        int modeIndex = SharedRandom.Next(4);
+        _lateralSign = SharedRandom.Next(2) == 0 ? -1 : 1;
+
+        switch (modeIndex)
+        {
+            case 0:
+                _randomMovementMode = RandomMovementMode.Pause;
+                _randomMovementTimeLeft = NextRange(RandomPauseMinDuration, RandomPauseMaxDuration);
+                break;
+
+            case 1:
+                _randomMovementMode = RandomMovementMode.SideDash;
+                _randomMovementTimeLeft = NextRange(RandomSideDashMinDuration, RandomSideDashMaxDuration);
+                break;
+
+            case 2:
+                _randomMovementMode = RandomMovementMode.Zigzag;
+                _randomMovementTimeLeft = NextRange(RandomZigzagMinDuration, RandomZigzagMaxDuration);
+                _zigzagDirectionTimeLeft = MathF.Max(0.02f, RandomZigzagDirectionChangeInterval);
+                break;
+
+            default:
+                _randomMovementMode = RandomMovementMode.Orbit;
+                _randomMovementTimeLeft = NextRange(RandomOrbitMinDuration, RandomOrbitMaxDuration);
+                break;
+        }
+    }
+
+    private static Vector2 GetPerpendicular(Vector2 direction, int sign)
+    {
+        return sign >= 0
+            ? new Vector2(-direction.Y, direction.X)
+            : new Vector2(direction.Y, -direction.X);
+    }
+
+    private static float NextRange(float min, float max)
+    {
+        if (max < min)
+            (min, max) = (max, min);
+
+        double t = SharedRandom.NextDouble();
+        return min + (float)t * (max - min);
+    }
 }

@@ -42,6 +42,19 @@ namespace Vibe_Game.Core.Settings
         public const float AdaptiveChasingInitialRadius = 90f;
         public const float AdaptiveChasingExpandedRadius = 200f;
         public const float AdaptiveChasingSpawnChance = 0.3f;
+
+        public const float ShooterRadius = 10f;
+        public const float ShooterMoveSpeed = 85f;
+        public const int ShooterMaxHealth = 12;
+        public const float ShooterAggroRadius = 150f;
+        public const float ShooterStopDurationMin = 0.5f;
+        public const float ShooterStopDurationMax = 1.0f;
+        public const float ShooterProjectileSpeed = 240f;
+        public const int ShooterProjectileDamage = 1;
+        public const float ShooterProjectileLifetime = 2.2f;
+        public const float ShooterProjectileRadius = 5f;
+        public const float ShooterProjectileRecoilForce = 0f;
+        public const float ShooterSpawnChancePerRoom = 0.2f;
     }
 
     public static class GameColors

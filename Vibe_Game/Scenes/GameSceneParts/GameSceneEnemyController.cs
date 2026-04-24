@@ -13,13 +13,15 @@ namespace Vibe_Game.Scenes
     {
         private readonly GameSceneState _state;
         private readonly GameSceneWorld _world;
+        private readonly GameSceneProjectileController _projectiles;
         private readonly IFlyingCollisionChecker _flyingCollision;
         private readonly IWallCollisionChecker _wallCollision;
 
-        public GameSceneEnemyController(GameSceneState state, GameSceneWorld world)
+        public GameSceneEnemyController(GameSceneState state, GameSceneWorld world, GameSceneProjectileController projectiles)
         {
             _state = state;
             _world = world;
+            _projectiles = projectiles;
             _flyingCollision = new SceneFlyingCollisionChecker(world);
             _wallCollision = new SceneWallCollisionChecker(world);
         }
@@ -28,6 +30,7 @@ namespace Vibe_Game.Scenes
         {
             SpawnBossRoomEnemies(floorIndex);
             SpawnFlyingEnemiesInRooms(floorIndex);
+            SpawnShooterEnemiesInRooms(floorIndex);
             SpawnChasingEnemiesInRooms(floorIndex);
             SpawnAdaptiveChasingEnemiesInRooms(floorIndex);
         }
@@ -317,6 +320,36 @@ namespace Vibe_Game.Scenes
             }
         }
 
+        private void SpawnShooterEnemiesInRooms(int floorIndex)
+        {
+            var rng = new Random(unchecked(floorIndex * 733 ^ 0xBA5E));
+
+            for (int gx = 0; gx < WorldConfig.GridSize; gx++)
+            {
+                for (int gy = 0; gy < WorldConfig.GridSize; gy++)
+                {
+                    Room room = _state.FloorMap[gx, gy];
+                    if (room == null || !CanSpawnRegularEnemies(room.Type))
+                        continue;
+
+                    if (rng.NextDouble() > EnemyConfig.ShooterSpawnChancePerRoom)
+                        continue;
+
+                    int enemyCount = rng.Next(1, 3);
+
+                    for (int i = 0; i < enemyCount; i++)
+                    {
+                        Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                        ShooterFlyingEnemy shooter = new ShooterFlyingEnemy(spawnWorld, _flyingCollision)
+                        {
+                            ProjectileSpawner = _projectiles.Spawn
+                        };
+                        room.enemies.Add(shooter);
+                    }
+                }
+            }
+        }
+
         private void SpawnAdaptiveChasingEnemiesInRooms(int floorIndex)
         {
             var rng = new Random(unchecked(floorIndex * 397 ^ 0x5EED));
@@ -357,6 +390,7 @@ namespace Vibe_Game.Scenes
 
                     int chasingCount = 2 + floorIndex;
                     int flyingCount = 1 + floorIndex / 2;
+                    int shooterCount = Math.Max(1, floorIndex / 2);
                     int adaptiveCount = Math.Max(1, floorIndex - 1);
 
                     for (int i = 0; i < chasingCount; i++)
@@ -375,6 +409,16 @@ namespace Vibe_Game.Scenes
                     {
                         Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
                         room.enemies.Add(new AdaptiveChasingEnemy(spawnWorld, _wallCollision));
+                    }
+
+                    for (int i = 0; i < shooterCount; i++)
+                    {
+                        Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                        ShooterFlyingEnemy shooter = new ShooterFlyingEnemy(spawnWorld, _flyingCollision)
+                        {
+                            ProjectileSpawner = _projectiles.Spawn
+                        };
+                        room.enemies.Add(shooter);
                     }
                 }
             }
@@ -412,6 +456,7 @@ namespace Vibe_Game.Scenes
 
         private static float GetEnemyRadius(Enemy enemy)
         {
+            if (enemy is ShooterFlyingEnemy) return EnemyConfig.ShooterRadius;
             if (enemy is FlyingEnemy) return EnemyConfig.DefaultFlyingRadius;
             if (enemy is ChasingEnemy) return EnemyConfig.DefaultChasingRadius;
             if (enemy is AdaptiveChasingEnemy) return EnemyConfig.DefaultChasingRadius;

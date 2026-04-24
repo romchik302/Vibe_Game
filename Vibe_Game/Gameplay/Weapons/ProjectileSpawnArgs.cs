@@ -11,4 +11,5 @@ public readonly struct ProjectileSpawnArgs
     public float LifetimeSeconds { get; init; }
     public float Radius { get; init; }
     public float RecoilForce { get; init; }  // Сила отдачи при попадании
+    public bool IsFriendlyToPlayer { get; init; }
 }

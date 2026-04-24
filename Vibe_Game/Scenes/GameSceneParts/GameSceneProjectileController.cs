@@ -27,7 +27,8 @@ namespace Vibe_Game.Scenes
                 args.Damage,
                 args.LifetimeSeconds,
                 args.Radius,
-                args.RecoilForce
+                args.RecoilForce,
+                args.IsFriendlyToPlayer
             ));
         }
 
@@ -62,7 +63,7 @@ namespace Vibe_Game.Scenes
 
                 Room room = _state.FloorMap[rx, ry];
 
-                if (room?.enemies != null)
+                if (projectile.IsFriendlyToPlayer && room?.enemies != null)
                 {
                     foreach (var enemy in room.enemies)
                     {
@@ -79,6 +80,14 @@ namespace Vibe_Game.Scenes
                             projectile.IsAlive = false;
                             break;
                         }
+                    }
+                }
+                else if (!projectile.IsFriendlyToPlayer)
+                {
+                    if (projectile.GetBounds().Intersects(_state.Player.GetBounds()))
+                    {
+                        _state.Player.TakeDamage(projectile.Damage);
+                        projectile.IsAlive = false;
                     }
                 }
 
@@ -104,7 +113,7 @@ namespace Vibe_Game.Scenes
                         radius * 2,
                         radius * 2
                     ),
-                    Color.SkyBlue
+                    projectile.IsFriendlyToPlayer ? Color.SkyBlue : Color.OrangeRed
                 );
             }
         }

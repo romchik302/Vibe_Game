@@ -12,8 +12,17 @@ public sealed class Projectile : Entity
     public float LifeLeft { get; private set; }
     public float Radius {  get; private set; }
     public float RecoilForce { get; }  // Сила отдачи при попадании
+    public bool IsFriendlyToPlayer { get; }
 
-    public Projectile(Vector2 position, Vector2 direction, float speed, float damage, float lifetimeSeconds, float radius, float recoilForce = 0f)
+    public Projectile(
+        Vector2 position,
+        Vector2 direction,
+        float speed,
+        float damage,
+        float lifetimeSeconds,
+        float radius,
+        float recoilForce = 0f,
+        bool isFriendlyToPlayer = true)
     {
         Position = position;
         Direction = Vector2.Normalize(direction);
@@ -23,6 +32,7 @@ public sealed class Projectile : Entity
         Velocity = Direction * speed;
         Radius = radius;
         RecoilForce = recoilForce;
+        IsFriendlyToPlayer = isFriendlyToPlayer;
     }
 
     public override void Update(GameTime gameTime)

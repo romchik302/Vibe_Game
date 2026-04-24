@@ -81,7 +81,6 @@ public class ChasingEnemy : Enemy
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         Vector2 toTarget = ChaseTarget - Position;
-        UpdateFacingFromDirection(toTarget, allowVertical: false);
 
         if (toTarget.LengthSquared() < 2f)
         {
@@ -89,8 +88,9 @@ public class ChasingEnemy : Enemy
             return;
         }
 
-        toTarget.Normalize();
-        Vector2 delta = toTarget * (_moveSpeed * dt);
+        Vector2 moveDirection = GetMovementDirectionWithRandomBehavior(toTarget, dt, out float randomSpeedMultiplier);
+        UpdateFacingFromDirection(moveDirection == Vector2.Zero ? toTarget : moveDirection, allowVertical: false);
+        Vector2 delta = moveDirection * (_moveSpeed * randomSpeedMultiplier * dt);
 
         Position = ResolveWallCollision(Position, delta);
         Velocity = Vector2.Zero;

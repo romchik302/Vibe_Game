@@ -14,10 +14,10 @@ namespace Vibe_Game.Scenes
 {
     internal sealed class GameSceneRenderer
     {
-        private const int MinimapRoomSize = 20;
-        private const int MinimapSpacing = 22;
-        private const int MinimapOffset = 10;
-        private const float MinimapTextScale = 0.35f;
+        private const int MinimapRoomSize = 24;
+        private const int MinimapSpacing = 27;
+        private const int MinimapOffset = 12;
+        private const float MinimapTextScale = 0.42f;
 
         private readonly Game _game;
         private readonly GameSceneState _state;
@@ -263,10 +263,10 @@ namespace Vibe_Game.Scenes
             int maxCells = Math.Max(1, (int)MathF.Ceiling(_state.Player.Stats.MaxHealth));
             float currentHealth = MathHelper.Clamp(_state.Player.Stats.Health, 0f, _state.Player.Stats.MaxHealth);
 
-            const int cellSize = 22;
-            const int spacing = 6;
-            const int marginRight = 16;
-            const int marginTop = 16;
+            const int cellSize = 28;
+            const int spacing = 8;
+            const int marginRight = 18;
+            const int marginTop = 18;
             const int textureInset = 4;
 
             int totalWidth = maxCells * cellSize + (maxCells - 1) * spacing;
