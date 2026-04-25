@@ -26,7 +26,10 @@ namespace Vibe_Game.Gameplay.Entities.Player
 
         // Таймер неуязвимости после получения урона (в секундах)
         private float _invincibilityTimer = 0f;
-        private const float InvincibilityDuration = 1.0f;
+        private const float InvincibilityDuration = 1.4f;
+
+        private float _flashingTimer = 0f;
+        private const float FlashingDuration = 0.2f;
 
         public Player(
             Vector2 position,
@@ -94,6 +97,22 @@ namespace Vibe_Game.Gameplay.Entities.Player
             {
                 _invincibilityTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
                 if (_invincibilityTimer < 0) _invincibilityTimer = 0;
+
+                _flashingTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+                if (_flashingTimer > FlashingDuration)
+                {
+                    if (Color != Color.White)
+                    {
+                        Color = Color.White;
+                    }
+                    else
+                    {
+                        Color = Color.White * 0.25f;
+                    }
+
+                    _flashingTimer = 0f;
+                }
             }
             else
             {
@@ -134,8 +153,8 @@ namespace Vibe_Game.Gameplay.Entities.Player
             Stats.TakeDamage(amount);
             _invincibilityTimer = InvincibilityDuration;
 
-            // Визуальный эффект - мигание красным (можно добавить в рендерер)
-            Color = Color.LightCoral;
+            // Визуальный эффект - мигание 
+            Color = Color.White * 0.25f;
         }
 
         public bool IsInvincible => _invincibilityTimer > 0;
