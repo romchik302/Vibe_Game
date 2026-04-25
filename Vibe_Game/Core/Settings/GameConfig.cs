@@ -32,11 +32,11 @@ namespace Vibe_Game.Core.Settings
         public const float FlyingSpawnChancePerRoom = 0.45f;
 
         public const int DefaultChasingRadius = 12;
-        public const float DefaultChasingMoveSpeed = 80f;
+        public const float DefaultChasingMoveSpeed = 50f;
         public const int DefaultChasingMaxHealth = 10;
         public const float ChasingSpawnChancePerRoom = 0.35f;
 
-        public const float AdaptiveChasingMoveSpeed = 100f;
+        public const float AdaptiveChasingMoveSpeed = 70f;
         public const int AdaptiveChasingMaxHealth = 20;
         public const float AdaptiveChasingRadius = 15f;
         public const float AdaptiveChasingInitialRadius = 90f;
@@ -54,7 +54,7 @@ namespace Vibe_Game.Core.Settings
         public const float ShooterProjectileLifetime = 2.2f;
         public const float ShooterProjectileRadius = 3f;
         public const float ShooterProjectileRecoilForce = 0f;
-        public const float ShooterSpawnChancePerRoom = 0.2f;
+        public const float ShooterSpawnChancePerRoom = 0.4f;
     }
 
     public static class GameColors

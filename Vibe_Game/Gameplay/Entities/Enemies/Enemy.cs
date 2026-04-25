@@ -57,7 +57,7 @@ public abstract class Enemy : Entity
     private float _zigzagDirectionTimeLeft = 0f;
     private int _lateralSign = 1;
 
-    public float RandomBehaviorChance { get; set; } = 0.18f;
+    public float RandomBehaviorChance { get; set; } = 0.58f;
     public float RandomPauseMinDuration { get; set; } = 0.1f;
     public float RandomPauseMaxDuration { get; set; } = 0.4f;
     public float RandomSideDashMinDuration { get; set; } = 0.18f;
