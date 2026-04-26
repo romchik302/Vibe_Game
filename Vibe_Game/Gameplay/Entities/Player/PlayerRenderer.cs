@@ -30,8 +30,8 @@ internal class PlayerRenderer : IPlayerRenderer
     private const int IDLE_FRAMES = 5;
 
     private const float IDLE_FRAME_DURATION = 0.18f;
-    private const float IDLE_COOLDOWN = 1.2f;          // пауза между idle
-    private const float STOP_COOLDOWN = 0.5f;          // пауза после движения
+    private const float IDLE_COOLDOWN = 3f;          // пауза между idle
+    private const float STOP_COOLDOWN = 5f;          // пауза после движения
 
     private Random _random = new Random();
 
@@ -40,6 +40,7 @@ internal class PlayerRenderer : IPlayerRenderer
     private bool _isIdlePlaying = false;
 
     private bool _wasMoving = false;
+    private bool _idleFinished = false;
 
     public PlayerRenderer(Texture2D spriteSheet)
     {
@@ -84,6 +85,7 @@ internal class PlayerRenderer : IPlayerRenderer
         _idleCooldownTimer = STOP_COOLDOWN;
 
         _wasMoving = true;
+        _idleFinished = false;
     }
 
     private void UpdateIdle(float dt)
@@ -94,6 +96,7 @@ internal class PlayerRenderer : IPlayerRenderer
             _idleCooldownTimer = STOP_COOLDOWN;
             _wasMoving = false;
             _isIdlePlaying = false;
+            _idleFinished = false;
             return;
         }
 
@@ -111,6 +114,7 @@ internal class PlayerRenderer : IPlayerRenderer
             _currentFrameIndex = 0;
             _isIdlePlaying = true;
             _animationTimer = 0f;
+            _idleFinished = false;
         }
 
         // проигрываем 5 кадров подряд
@@ -121,10 +125,11 @@ internal class PlayerRenderer : IPlayerRenderer
 
             if (_currentFrameIndex >= IDLE_FRAMES)
             {
-                // закончили анимацию → ставим паузу
+                // вместо сброса _currentFrameIndex – запоминаем последний кадр
                 _isIdlePlaying = false;
+                _idleFinished = true;
+                _currentFrameIndex = IDLE_FRAMES - 1;   // последний кадр
                 _idleCooldownTimer = IDLE_COOLDOWN;
-                _currentFrameIndex = 0;
             }
         }
     }
@@ -189,10 +194,17 @@ internal class PlayerRenderer : IPlayerRenderer
             _currentFrame.X = _currentFrameIndex * _frameWidth;
             _currentFrame.Y = _idleRow * _frameHeight;
         }
+        else if (_idleFinished)
+        {
+            // последний кадр завершённой idle-анимации
+            _currentFrame.X = _currentFrameIndex * _frameWidth;
+            _currentFrame.Y = _idleRow * _frameHeight;
+        }
         else
         {
+            // первый кадр первой строки (0,0)
             _currentFrame.X = 0;
-            _currentFrame.Y = GetAnimationRow() * _frameHeight;
+            _currentFrame.Y = _frameHeight;
         }
 
         _currentFrame.Width = _frameWidth;

@@ -13,13 +13,15 @@ namespace Vibe_Game.Scenes
     {
         private readonly GameSceneState _state;
         private readonly GameSceneWorld _world;
+        private readonly GameSceneProjectileController _projectiles;
         private readonly IFlyingCollisionChecker _flyingCollision;
         private readonly IWallCollisionChecker _wallCollision;
 
-        public GameSceneEnemyController(GameSceneState state, GameSceneWorld world)
+        public GameSceneEnemyController(GameSceneState state, GameSceneWorld world, GameSceneProjectileController projectiles)
         {
             _state = state;
             _world = world;
+            _projectiles = projectiles;
             _flyingCollision = new SceneFlyingCollisionChecker(world);
             _wallCollision = new SceneWallCollisionChecker(world);
         }
@@ -28,6 +30,7 @@ namespace Vibe_Game.Scenes
         {
             SpawnBossRoomEnemies(floorIndex);
             SpawnFlyingEnemiesInRooms(floorIndex);
+            SpawnShooterEnemiesInRooms(floorIndex);
             SpawnChasingEnemiesInRooms(floorIndex);
             SpawnAdaptiveChasingEnemiesInRooms(floorIndex);
         }
@@ -54,16 +57,18 @@ namespace Vibe_Game.Scenes
                     {
                         Enemy enemy = room.enemies[i];
 
-                        if (enemy is FlyingEnemy flying)
+                        if (enemy is BossEnemy boss)
+                            boss.ChaseTarget = _state.Player.Position;
+                        else if (enemy is FlyingEnemy flying)
                             flying.ChaseTarget = _state.Player.Position;
-                        else if (enemy is ChasingEnemy chasing)
-                            chasing.ChaseTarget = _state.Player.Position;
                         else if (enemy is AdaptiveChasingEnemy adaptive)
                             adaptive.ChaseTarget = _state.Player.Position;
+                        else if (enemy is ChasingEnemy chasing)
+                            chasing.ChaseTarget = _state.Player.Position;
 
-                        if (enemy.GetBounds().Intersects(playerBounds))
+                        if (enemy.CanDealContactDamage && enemy.GetBounds().Intersects(playerBounds))
                         {
-                            _state.Player.TakeDamage(1.0f);
+                            _state.Player.TakeDamage(GetEnemyContactDamage(enemy));
 
                             Vector2 toEnemy = enemy.Position - _state.Player.Position;
                             float distance = toEnemy.Length();
@@ -148,6 +153,7 @@ namespace Vibe_Game.Scenes
 
             _world.RefreshEnemyOccupancy();
         }
+
 
         public void Draw(SpriteBatch spriteBatch)
         {
@@ -284,6 +290,7 @@ namespace Vibe_Game.Scenes
                     for (int i = 0; i < enemyCount; i++)
                     {
                         Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                        spawnWorld = _world.PushEnemyOutOfWalls(spawnWorld, EnemyConfig.DefaultFlyingRadius);
                         room.enemies.Add(new FlyingEnemy(spawnWorld, _flyingCollision));
                     }
                 }
@@ -310,7 +317,39 @@ namespace Vibe_Game.Scenes
                     for (int i = 0; i < enemyCount; i++)
                     {
                         Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                        spawnWorld = _world.PushEnemyOutOfWalls(spawnWorld, EnemyConfig.DefaultChasingRadius);
                         room.enemies.Add(new ChasingEnemy(spawnWorld, _wallCollision));
+                    }
+                }
+            }
+        }
+
+        private void SpawnShooterEnemiesInRooms(int floorIndex)
+        {
+            var rng = new Random(unchecked(floorIndex * 733 ^ 0xBA5E));
+
+            for (int gx = 0; gx < WorldConfig.GridSize; gx++)
+            {
+                for (int gy = 0; gy < WorldConfig.GridSize; gy++)
+                {
+                    Room room = _state.FloorMap[gx, gy];
+                    if (room == null || !CanSpawnRegularEnemies(room.Type))
+                        continue;
+
+                    if (rng.NextDouble() > EnemyConfig.ShooterSpawnChancePerRoom)
+                        continue;
+
+                    int enemyCount = rng.Next(1, 3);
+
+                    for (int i = 0; i < enemyCount; i++)
+                    {
+                        Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                        spawnWorld = _world.PushEnemyOutOfWalls(spawnWorld, EnemyConfig.ShooterRadius);
+                        ShooterFlyingEnemy shooter = new ShooterFlyingEnemy(spawnWorld, _flyingCollision)
+                        {
+                            ProjectileSpawner = _projectiles.Spawn
+                        };
+                        room.enemies.Add(shooter);
                     }
                 }
             }
@@ -336,6 +375,7 @@ namespace Vibe_Game.Scenes
                     for (int i = 0; i < enemyCount; i++)
                     {
                         Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                        spawnWorld = _world.PushEnemyOutOfWalls(spawnWorld, EnemyConfig.AdaptiveChasingRadius);
                         room.enemies.Add(new AdaptiveChasingEnemy(spawnWorld, _wallCollision));
                     }
                 }
@@ -354,29 +394,71 @@ namespace Vibe_Game.Scenes
                     if (room?.Type != LevelGenerator.RoomType.Boss)
                         continue;
 
-                    int chasingCount = 2 + floorIndex;
-                    int flyingCount = 1 + floorIndex / 2;
-                    int adaptiveCount = Math.Max(1, floorIndex - 1);
-
-                    for (int i = 0; i < chasingCount; i++)
+                    Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
+                    spawnWorld = _world.PushEnemyOutOfWalls(spawnWorld, EnemyConfig.BossRadius);
+                    BossEnemy boss = new BossEnemy(spawnWorld, _wallCollision)
                     {
-                        Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
-                        room.enemies.Add(new ChasingEnemy(spawnWorld, _wallCollision));
-                    }
+                        ProjectileSpawner = _projectiles.Spawn,
+                        DamagePlayer = damage => _state.Player.TakeDamage(damage),
+                        SummonEnemy = (position, spawnShooter) => SpawnSummonedEnemy(position, spawnShooter)
+                    };
+                    room.enemies.Add(boss);
+                }
+            }
+        }
 
-                    for (int i = 0; i < flyingCount; i++)
-                    {
-                        Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
-                        room.enemies.Add(new FlyingEnemy(spawnWorld, _flyingCollision));
-                    }
+        private void SpawnSummonedEnemy(Vector2 position, bool spawnShooter)
+        {
+            Point grid = new Point(
+                Math.Clamp((int)(position.X / WorldConfig.RoomWidthPx), 0, WorldConfig.GridSize - 1),
+                Math.Clamp((int)(position.Y / WorldConfig.RoomHeightPx), 0, WorldConfig.GridSize - 1)
+            );
 
-                    for (int i = 0; i < adaptiveCount; i++)
+            Room room = _state.FloorMap[grid.X, grid.Y];
+            if (room == null)
+                return;
+
+            float radius = spawnShooter ? EnemyConfig.ShooterRadius : EnemyConfig.DefaultFlyingRadius;
+            Vector2 safePosition = _world.PushEnemyOutOfWalls(position, radius);
+
+            Enemy enemy;
+            if (spawnShooter)
+            {
+                enemy = new ShooterFlyingEnemy(safePosition, _flyingCollision)
+                {
+                    ProjectileSpawner = _projectiles.Spawn
+                };
+            }
+            else
+            {
+                enemy = new FlyingEnemy(safePosition, _flyingCollision);
+            }
+
+            enemy.Activate(skipDelay: true); // Пропускаем задержку для призванных врагов
+            room.enemies.Add(enemy);
+        }
+
+        public List<Enemy> GetEnemies()
+        {
+            var result = new List<Enemy>();
+
+            for (int x = 0; x < WorldConfig.GridSize; x++)
+            {
+                for (int y = 0; y < WorldConfig.GridSize; y++)
+                {
+                    Room room = _state.FloorMap[x, y];
+                    if (room?.enemies == null)
+                        continue;
+
+                    foreach (var enemy in room.enemies)
                     {
-                        Vector2 spawnWorld = _world.GetRandomFreeTilePosition(room, gx, gy, rng);
-                        room.enemies.Add(new AdaptiveChasingEnemy(spawnWorld, _wallCollision));
+                        if (enemy.IsAlive)
+                            result.Add(enemy);
                     }
                 }
             }
+
+            return result;
         }
 
         private static bool CanSpawnRegularEnemies(LevelGenerator.RoomType roomType)
@@ -388,10 +470,19 @@ namespace Vibe_Game.Scenes
 
         private static float GetEnemyRadius(Enemy enemy)
         {
+            if (enemy is ShooterFlyingEnemy) return EnemyConfig.ShooterRadius;
+            if (enemy is BossEnemy) return EnemyConfig.BossRadius;
             if (enemy is FlyingEnemy) return EnemyConfig.DefaultFlyingRadius;
             if (enemy is ChasingEnemy) return EnemyConfig.DefaultChasingRadius;
             if (enemy is AdaptiveChasingEnemy) return EnemyConfig.DefaultChasingRadius;
             return 10f;
+        }
+
+        private static float GetEnemyContactDamage(Enemy enemy)
+        {
+            if (enemy is BossEnemy boss)
+                return boss.ContactDamage;
+            return 1f;
         }
     }
 }

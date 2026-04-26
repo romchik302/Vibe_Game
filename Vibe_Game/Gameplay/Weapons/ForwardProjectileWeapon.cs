@@ -49,7 +49,8 @@ public sealed class ForwardProjectileWeapon : WeaponBase
             Damage = _damage,
             LifetimeSeconds = _lifetime,
             Radius = _radius,
-            RecoilForce = _recoilForce
+            RecoilForce = _recoilForce,
+            IsFriendlyToPlayer = true
         });
 
         return true;

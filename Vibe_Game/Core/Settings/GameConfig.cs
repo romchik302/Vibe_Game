@@ -26,22 +26,65 @@ namespace Vibe_Game.Core.Settings
 
     public static class EnemyConfig
     {
+        public const float EnemyActivationDelaySeconds = 0.4f;
+
         public const int DefaultFlyingRadius = 8;
-        public const float DefaultFlyingMoveSpeed = 100f;
+        public const float DefaultFlyingMoveSpeed = 85f;
         public const int DefaultFlyingMaxHealth = 8;
         public const float FlyingSpawnChancePerRoom = 0.45f;
 
         public const int DefaultChasingRadius = 12;
-        public const float DefaultChasingMoveSpeed = 80f;
+        public const float DefaultChasingMoveSpeed = 50f;
         public const int DefaultChasingMaxHealth = 10;
         public const float ChasingSpawnChancePerRoom = 0.35f;
 
-        public const float AdaptiveChasingMoveSpeed = 100f;
+        public const float AdaptiveChasingMoveSpeed = 70f;
         public const int AdaptiveChasingMaxHealth = 20;
         public const float AdaptiveChasingRadius = 15f;
         public const float AdaptiveChasingInitialRadius = 90f;
-        public const float AdaptiveChasingExpandedRadius = 140f;
+        public const float AdaptiveChasingExpandedRadius = 200f;
         public const float AdaptiveChasingSpawnChance = 0.3f;
+
+        public const float ShooterRadius = 10f;
+        public const float ShooterMoveSpeed = 80f;
+        public const int ShooterMaxHealth = 12;
+        public const float ShooterAggroRadius = 100f;
+        public const float ShooterShotIntervalSeconds = 0.7f;
+        public const float ShooterReentryShotCooldownSeconds = 0.55f;
+        public const float ShooterProjectileSpeed = 150f;
+        public const int ShooterProjectileDamage = 1;
+        public const float ShooterProjectileLifetime = 2.2f;
+        public const float ShooterProjectileRadius = 3f;
+        public const float ShooterProjectileRecoilForce = 0f;
+        public const float ShooterSpawnChancePerRoom = 0.4f;
+
+        public const float BossMoveSpeed = 35f;
+        public const int BossMaxHealth = 180;
+        public const float BossRadius = 26f;
+        public const float BossAttackPauseMin = 0.95f;
+        public const float BossAttackPauseMax = 1.55f;
+        public const float BossSummonAttackWeight = 0.35f;
+        public const float BossSummonShooterChance = 0.2f;
+        public const int BossSummonMinCount = 2;
+        public const int BossSummonMaxCount = 4;
+        public const float BossSummonSpawnRadius = 30f;
+
+        public const int BossSpikeBurstProjectileCount = 10;
+        public const float BossSpikeBurstProjectileSpeed = 210f;
+        public const float BossSpikeBurstProjectileLifetime = 2.5f;
+        public const float BossSpikeBurstProjectileRadius = 6f;
+        public const float BossSpikeBurstSpawnRadius = 22f;
+
+        public const int BossSpinningSpikeCount = 7;
+        public const float BossSpinningSpikeOrbitRadius = 70f;
+        public const float BossSpinningSpikeAngularSpeed = 2.2f;
+        public const float BossSpinningSpikeOrbitDuration = 2f;
+        public const float BossSpinningSpikeReleaseSpeed = 100f;
+
+        public const float BossBurrowTravelDuration = 1.5f;
+        public const float BossBurrowTrailSpeed = 30f;
+        public const float BossBurrowStrikeRadius = 44f;
+        public const bool BossInvulnerableDuringBurrow = true;
     }
 
     public static class GameColors

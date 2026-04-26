@@ -20,15 +20,33 @@ namespace Vibe_Game.Scenes
 
         public void Spawn(ProjectileSpawnArgs args)
         {
-            _state.Projectiles.Add(new Projectile(
+            Projectile projectile = new Projectile(
                 args.Position,
                 args.Direction,
                 args.Speed,
                 args.Damage,
                 args.LifetimeSeconds,
                 args.Radius,
-                args.RecoilForce
-            ));
+                args.RecoilForce,
+                args.IsFriendlyToPlayer,
+                args.IgnoreWallCollisions,
+                args.Length
+            );
+
+            if (args.UseOrbitMotion)
+            {
+                projectile.ConfigureOrbit(
+                    args.OrbitCenter,
+                    args.OrbitRadius,
+                    args.OrbitStartAngle,
+                    args.OrbitAngularSpeed,
+                    args.OrbitDurationSeconds,
+                    args.ReleaseAfterOrbit,
+                    args.ReleaseDirection
+                );
+            }
+
+            _state.Projectiles.Add(projectile);
         }
 
         public void Update(GameTime gameTime)
@@ -45,7 +63,7 @@ namespace Vibe_Game.Scenes
                 }
 
                 Vector2 next = projectile.Position + projectile.Velocity * dt;
-                if (_world.IsWorldPointBlocked(next))
+                if (!projectile.IgnoreWallCollisions && _world.IsWorldPointBlocked(next))
                 {
                     projectile.IsAlive = false;
                     _state.Projectiles.RemoveAt(i);
@@ -62,7 +80,7 @@ namespace Vibe_Game.Scenes
 
                 Room room = _state.FloorMap[rx, ry];
 
-                if (room?.enemies != null)
+                if (projectile.IsFriendlyToPlayer && room?.enemies != null)
                 {
                     foreach (var enemy in room.enemies)
                     {
@@ -81,6 +99,14 @@ namespace Vibe_Game.Scenes
                         }
                     }
                 }
+                else if (!projectile.IsFriendlyToPlayer)
+                {
+                    if (projectile.GetBounds().Intersects(_state.Player.GetBounds()))
+                    {
+                        _state.Player.TakeDamage(projectile.Damage);
+                        projectile.IsAlive = false;
+                    }
+                }
 
                 if (!projectile.IsAlive)
                     _state.Projectiles.RemoveAt(i);
@@ -94,18 +120,48 @@ namespace Vibe_Game.Scenes
                 if (!projectile.IsAlive)
                     continue;
 
-                int radius = (int)projectile.Radius;
+                if (projectile.Length > 0f)
+                {
+                    // Draw elongated projectile (spike) using rotation
+                    float angle = System.MathF.Atan2(projectile.Direction.Y, projectile.Direction.X);
+                    float halfLength = projectile.Length / 2f;
+                    float halfWidth = projectile.Radius;
 
-                spriteBatch.Draw(
-                    pixel,
-                    new Rectangle(
-                        (int)projectile.Position.X - radius,
-                        (int)projectile.Position.Y - radius,
-                        radius * 2,
-                        radius * 2
-                    ),
-                    Color.SkyBlue
-                );
+                    Rectangle spikeRect = new Rectangle(
+                        (int)(-halfLength),
+                        (int)(-halfWidth),
+                        (int)projectile.Length,
+                        (int)(halfWidth * 2)
+                    );
+
+                    spriteBatch.Draw(
+                        pixel,
+                        projectile.Position,
+                        spikeRect,
+                        projectile.IsFriendlyToPlayer ? Color.SkyBlue : Color.OrangeRed,
+                        angle,
+                        Vector2.Zero,
+                        1f,
+                        SpriteEffects.None,
+                        0f
+                    );
+                }
+                else
+                {
+                    // Draw normal circular projectile
+                    int radius = (int)projectile.Radius;
+
+                    spriteBatch.Draw(
+                        pixel,
+                        new Rectangle(
+                            (int)projectile.Position.X - radius,
+                            (int)projectile.Position.Y - radius,
+                            radius * 2,
+                            radius * 2
+                        ),
+                        projectile.IsFriendlyToPlayer ? Color.SkyBlue : Color.OrangeRed
+                    );
+                }
             }
         }
     }

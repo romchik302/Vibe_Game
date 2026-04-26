@@ -79,15 +79,15 @@ public class FlyingEnemy : Enemy
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         Vector2 toTarget = ChaseTarget - Position;
-        UpdateFacingFromDirection(toTarget, allowVertical: false);
         if (toTarget.LengthSquared() < 2f)
         {
             Velocity = Vector2.Zero;
             return;
         }
 
-        toTarget.Normalize();
-        Vector2 delta = toTarget * (_moveSpeed * dt);
+        Vector2 moveDirection = GetMovementDirectionWithRandomBehavior(toTarget, dt, out float randomSpeedMultiplier);
+        UpdateFacingFromDirection(moveDirection == Vector2.Zero ? toTarget : moveDirection, allowVertical: false);
+        Vector2 delta = moveDirection * (_moveSpeed * randomSpeedMultiplier * dt);
 
         Position = ResolveFlyingSlide(Position, delta);
         Velocity = Vector2.Zero;
@@ -144,6 +144,7 @@ public class FlyingEnemy : Enemy
                 GetHorizontalSpriteEffect(),
                 0f
             );
+            DrawDebugOverlay(spriteBatch);
             return;
         }
 
@@ -155,9 +156,10 @@ public class FlyingEnemy : Enemy
 
         var rect = GetBounds();
         spriteBatch.Draw(_pixel, rect, new Color(200, 80, 200, 230));
+        DrawDebugOverlay(spriteBatch);
     }
 
-    private void EnsureSpriteConfigured()
+    protected override void EnsureSpriteConfigured()
     {
         if (_spriteSheet != null)
             return;
@@ -173,7 +175,7 @@ public class FlyingEnemy : Enemy
         _sourceRect = new Rectangle(0, 0, _frameWidth, _frameHeight);
     }
 
-    private void UpdateAnimation(GameTime gameTime)
+    protected override void UpdateAnimation(GameTime gameTime)
     {
         if (_spriteSheet == null)
             return;

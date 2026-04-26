@@ -38,14 +38,16 @@ namespace Vibe_Game.Scenes
         public override void Initialize()
         {
             _world = new GameSceneWorld(_state);
-            _enemyController = new GameSceneEnemyController(_state, _world);
             _projectileController = new GameSceneProjectileController(_state, _world);
+            _enemyController = new GameSceneEnemyController(_state, _world, _projectileController);
             _renderer = new GameSceneRenderer(GameInstance, _state, _projectileController, _enemyController);
             _attackContext = new GameSceneAttackContext(_state, _world, _projectileController, _enemyController);
 
             Vector2 startPos = GetStartWorldPosition();
             _state.Player = new Player(startPos, _playerRenderer, _inputService, _contentLoader, _attackContext);
-            _state.Player.EquippedWeapon = new ForwardProjectileWeapon(0.3f, 250f, 5, 10f, 3f);
+            //_state.Player.EquippedWeapon = new SwordWeapon();
+            // камилла сделай пожалуйста чтобы при старте игры можно было выбирать оружие
+            _state.Player.EquippedWeapon = new ForwardProjectileWeapon(0.35f, 205f, 3, 2f, 1.5f);
 
             LoadFloor(floorIndex: 1);
 
@@ -98,6 +100,8 @@ namespace Vibe_Game.Scenes
 
             if (_state.IsPlayerStandingOnFloorExit && _inputService.IsActionPressed(InputAction.Interact))
                 LoadFloor(nextFloorIndex);
+
+            _world.UpdatePlayerFrictionByGround();
 
             _world.UpdateCamera(GetCamera());
 

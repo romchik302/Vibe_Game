@@ -56,7 +56,7 @@ namespace Vibe_Game.Scenes
             spriteBatch.Draw(pixel, new Rectangle(panelRect.X - 3, panelRect.Y, 3, panelRect.Height), GameColors.MenuOutline);
             spriteBatch.Draw(pixel, new Rectangle(panelRect.Right, panelRect.Y, 3, panelRect.Height), GameColors.MenuOutline);
 
-            DrawCenteredText(spriteBatch, "VIBE GAME", new Vector2(viewport.Width / 2f, panelRect.Y + 62f), GameColors.RoomLabel, 1.4f, GameColors.RoomLabelShadow);
+            DrawCenteredText(spriteBatch, "SCRATCHED", new Vector2(viewport.Width / 2f, panelRect.Y + 62f), GameColors.RoomLabel, 1.4f, GameColors.RoomLabelShadow);
             DrawCenteredText(spriteBatch, "W / S OR ARROWS TO MOVE", new Vector2(viewport.Width / 2f, panelRect.Y + 112f), GameColors.MenuMuted, 0.55f);
             DrawCenteredText(spriteBatch, "SPACE OR E TO SELECT", new Vector2(viewport.Width / 2f, panelRect.Y + 138f), GameColors.MenuMuted, 0.55f);
 

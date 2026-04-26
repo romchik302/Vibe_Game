@@ -15,5 +15,6 @@ namespace Vibe_Game.Core.Tiles
         public virtual bool HasButton => false;
         public virtual bool CanHostEnemy => IsWalkable && !HasButton;
         public abstract Color Tint { get; }
+        public bool ReducesFriction { get; set; } = false;
     }
 }

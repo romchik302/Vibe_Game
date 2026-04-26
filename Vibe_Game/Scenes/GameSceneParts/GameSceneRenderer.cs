@@ -1,21 +1,23 @@
-using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using System;
+using System.Collections.Generic;
 using Vibe_Game.Core.Engine;
 using Vibe_Game.Core.Services;
 using Vibe_Game.Core.Settings;
 using Vibe_Game.Core.Utilities;
+using Vibe_Game.Gameplay.Entities;
 using Vibe_Game.Gameplay.Weapons;
 
 namespace Vibe_Game.Scenes
 {
     internal sealed class GameSceneRenderer
     {
-        private const int MinimapRoomSize = 20;
-        private const int MinimapSpacing = 22;
-        private const int MinimapOffset = 10;
-        private const float MinimapTextScale = 0.35f;
+        private const int MinimapRoomSize = 24;
+        private const int MinimapSpacing = 27;
+        private const int MinimapOffset = 12;
+        private const float MinimapTextScale = 0.42f;
 
         private readonly Game _game;
         private readonly GameSceneState _state;
@@ -57,10 +59,21 @@ namespace Vibe_Game.Scenes
                 }
             }
 
-            _projectiles.Draw(spriteBatch, pixel);
-            _enemies.Draw(spriteBatch);
-            _state.Player.Draw(spriteBatch);
+            var drawables = new List<Entity>();
+
+            drawables.AddRange(_enemies.GetEnemies());
+            drawables.Add(_state.Player);
+
+            // сортировка по Y
+            drawables.Sort((a, b) => a.Position.Y.CompareTo(b.Position.Y));
+
+            // отрисовка
+            foreach (var d in drawables)
+                d.Draw(spriteBatch);
             DrawCurrentRoomLabel(spriteBatch);
+
+            // Отрисовка проджектайлов
+            _projectiles.Draw(spriteBatch, pixel);
 
 #if DEBUG
             if (_state.Player.EquippedWeapon is SwordWeapon sword)
@@ -72,6 +85,7 @@ namespace Vibe_Game.Scenes
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             DrawMinimap(spriteBatch, pixel);
             DrawPlayerHealthHud(spriteBatch, pixel);
+            DrawBossHealthBar(spriteBatch, pixel);
             spriteBatch.End();
         }
 
@@ -250,10 +264,10 @@ namespace Vibe_Game.Scenes
             int maxCells = Math.Max(1, (int)MathF.Ceiling(_state.Player.Stats.MaxHealth));
             float currentHealth = MathHelper.Clamp(_state.Player.Stats.Health, 0f, _state.Player.Stats.MaxHealth);
 
-            const int cellSize = 22;
-            const int spacing = 6;
-            const int marginRight = 16;
-            const int marginTop = 16;
+            const int cellSize = 28;
+            const int spacing = 8;
+            const int marginRight = 18;
+            const int marginTop = 18;
             const int textureInset = 4;
 
             int totalWidth = maxCells * cellSize + (maxCells - 1) * spacing;
@@ -282,6 +296,63 @@ namespace Vibe_Game.Scenes
                 );
 
                 spriteBatch.Draw(pixel, fillRect, new Color(90, 220, 110));
+            }
+        }
+
+        private void DrawBossHealthBar(SpriteBatch spriteBatch, Texture2D pixel)
+        {
+            // Find boss in current room
+            Room currentRoom = _state.FloorMap[_state.CurrentRoomGrid.X, _state.CurrentRoomGrid.Y];
+            if (currentRoom?.enemies == null)
+                return;
+
+            Gameplay.Entities.Enemies.BossEnemy boss = null;
+            foreach (var enemy in currentRoom.enemies)
+            {
+                if (enemy is Gameplay.Entities.Enemies.BossEnemy b && b.IsAlive)
+                {
+                    boss = b;
+                    break;
+                }
+            }
+
+            if (boss == null)
+                return;
+
+            Viewport viewport = _game.GraphicsDevice.Viewport;
+
+            const int barHeight = 24;
+            const int barMarginBottom = 40;
+            const int barMarginSide = 100;
+            const int barPadding = 4;
+
+            int barWidth = viewport.Width - barMarginSide * 2;
+            int barX = barMarginSide;
+            int barY = viewport.Height - barMarginBottom - barHeight;
+
+            // Background
+            Rectangle bgRect = new Rectangle(barX, barY, barWidth, barHeight);
+            spriteBatch.Draw(pixel, bgRect, new Color(20, 15, 25, 240));
+            spriteBatch.DrawRectangle(pixel, bgRect, new Color(180, 60, 60), 2);
+
+            // Health fill
+            float healthPercent = (float)boss.Health / boss.MaxHealth;
+            int fillWidth = Math.Max(0, (int)(barWidth * healthPercent));
+            Rectangle fillRect = new Rectangle(barX + barPadding, barY + barPadding, fillWidth - barPadding * 2, barHeight - barPadding * 2);
+            spriteBatch.Draw(pixel, fillRect, new Color(220, 50, 50));
+
+            // Boss name label
+            if (_roomFont != null)
+            {
+                DrawCenteredText(
+                    spriteBatch,
+                    "BOSS",
+                    _roomFont,
+                    new Vector2(viewport.Width / 2, barY - 20),
+                    new Color(255, 200, 200),
+                    0.6f,
+                    new Color(20, 10, 10, 180)
+                );
             }
         }
 
