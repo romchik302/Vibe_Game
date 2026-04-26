@@ -159,7 +159,7 @@ public class FlyingEnemy : Enemy
         DrawDebugOverlay(spriteBatch);
     }
 
-    private void EnsureSpriteConfigured()
+    protected override void EnsureSpriteConfigured()
     {
         if (_spriteSheet != null)
             return;
@@ -175,7 +175,7 @@ public class FlyingEnemy : Enemy
         _sourceRect = new Rectangle(0, 0, _frameWidth, _frameHeight);
     }
 
-    private void UpdateAnimation(GameTime gameTime)
+    protected override void UpdateAnimation(GameTime gameTime)
     {
         if (_spriteSheet == null)
             return;

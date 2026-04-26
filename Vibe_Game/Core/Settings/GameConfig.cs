@@ -26,6 +26,8 @@ namespace Vibe_Game.Core.Settings
 
     public static class EnemyConfig
     {
+        public const float EnemyActivationDelaySeconds = 0.4f;
+
         public const int DefaultFlyingRadius = 8;
         public const float DefaultFlyingMoveSpeed = 85f;
         public const int DefaultFlyingMaxHealth = 8;
@@ -46,7 +48,7 @@ namespace Vibe_Game.Core.Settings
         public const float ShooterRadius = 10f;
         public const float ShooterMoveSpeed = 80f;
         public const int ShooterMaxHealth = 12;
-        public const float ShooterAggroRadius = 150f;
+        public const float ShooterAggroRadius = 100f;
         public const float ShooterShotIntervalSeconds = 0.7f;
         public const float ShooterReentryShotCooldownSeconds = 0.55f;
         public const float ShooterProjectileSpeed = 150f;

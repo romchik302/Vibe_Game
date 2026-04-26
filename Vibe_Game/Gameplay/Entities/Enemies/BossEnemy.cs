@@ -296,7 +296,8 @@ public sealed class BossEnemy : Enemy
                 OrbitAngularSpeed = SpinningSpikeAngularSpeed,
                 OrbitDurationSeconds = SpinningSpikeOrbitDuration,
                 ReleaseAfterOrbit = true,
-                ReleaseDirection = outward
+                ReleaseDirection = outward,
+                IgnoreWallCollisions = true,
             });
         }
     }

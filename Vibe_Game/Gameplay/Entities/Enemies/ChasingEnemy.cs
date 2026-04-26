@@ -203,7 +203,7 @@ public class ChasingEnemy : Enemy
         return GetAttackBounds();
     }
 
-    protected virtual void EnsureSpriteConfigured()
+    protected override void EnsureSpriteConfigured()
     {
         if (_spriteSheet != null)
             return;
@@ -221,7 +221,7 @@ public class ChasingEnemy : Enemy
         _sourceRect = new Rectangle(0, 0, _frameWidth, _frameHeight);
     }
 
-    protected void UpdateAnimation(GameTime gameTime)
+    protected override void UpdateAnimation(GameTime gameTime)
     {
         if (_spriteSheet == null)
             return;

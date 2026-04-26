@@ -434,7 +434,7 @@ namespace Vibe_Game.Scenes
                 enemy = new FlyingEnemy(safePosition, _flyingCollision);
             }
 
-            enemy.Activate();
+            enemy.Activate(skipDelay: true); // Пропускаем задержку для призванных врагов
             room.enemies.Add(enemy);
         }
 

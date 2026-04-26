@@ -49,6 +49,9 @@ public abstract class Enemy : Entity
     public virtual bool IsInvulnerable => false;
     public virtual bool CanDealContactDamage => true;
 
+    private float _activationDelayTimer = 0f;
+    private bool _canMove = false;
+
     /// <summary>Velocity отдачи (плавное отталкивание).</summary>
     private Vector2 _recoilVelocity = Vector2.Zero;
 
@@ -113,12 +116,22 @@ public abstract class Enemy : Entity
     }
 
     /// <summary>Вызывается сценой один раз при первом входе игрока в комнату этого врага.</summary>
-    public void Activate()
+    public void Activate(bool skipDelay = false)
     {
         if (IsActivated)
             return;
 
-        IsActivated = true;
+        IsActivated = true; // Сразу видим врага
+
+        if (skipDelay)
+        {
+            _canMove = true; // Сразу можем двигаться (для призванных врагов)
+        }
+        else
+        {
+            _activationDelayTimer = Core.Settings.EnemyConfig.EnemyActivationDelaySeconds; // Задержка движения при входе в комнату
+        }
+
         OnActivated();
     }
 
@@ -158,8 +171,25 @@ public abstract class Enemy : Entity
 
     public override void Update(GameTime gameTime)
     {
-        if (!IsAlive || !IsActivated)
+        if (!IsAlive)
             return;
+
+        // Обработка задержки перед началом движения
+        if (!_canMove)
+        {
+            if (_activationDelayTimer > 0f)
+            {
+                _activationDelayTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+                if (_activationDelayTimer <= 0f)
+                {
+                    _canMove = true;
+                }
+            }
+            // Обновляем анимацию даже во время задержки
+            EnsureSpriteConfigured();
+            UpdateAnimation(gameTime);
+            return; // Не двигаемся пока задержка не истекла
+        }
 
         // Применяем velocity отдачи
         if (_recoilVelocity != Vector2.Zero)
@@ -178,6 +208,18 @@ public abstract class Enemy : Entity
         }
 
         UpdateEnemy(gameTime);
+    }
+
+    /// <summary>Обновление анимации (вызывается всегда при активации, даже во время задержки движения).</summary>
+    protected virtual void UpdateAnimation(GameTime gameTime)
+    {
+        // Переопределяется в подклассах
+    }
+
+    /// <summary>Загрузка текстуры спрайта (вызывается для подготовки к отрисовке).</summary>
+    protected virtual void EnsureSpriteConfigured()
+    {
+        // Переопределяется в подклассах
     }
 
     /// <summary>Проверяет коллизию со стенами при отдаче и возвращает скорректированную позицию.</summary>
@@ -339,6 +381,27 @@ public abstract class Enemy : Entity
         return min + (float)t * (max - min);
     }
 
+    protected virtual Rectangle? GetDebugBodyBounds()
+    {
+        return GetBounds();
+    }
+
+    protected virtual Rectangle? GetDebugAttackBounds()
+    {
+        return null;
+    }
+
+    protected virtual float? GetDebugAggroRadius()
+    {
+        return null;
+    }
+
+    protected virtual Vector2 GetDebugCenter()
+    {
+        Rectangle bounds = GetBounds();
+        return new Vector2(bounds.Center.X, bounds.Center.Y);
+    }
+
 #if DEBUG
     protected void DrawDebugOverlay(SpriteBatch spriteBatch)
     {
@@ -362,27 +425,6 @@ public abstract class Enemy : Entity
         float? aggroRadius = GetDebugAggroRadius();
         if (aggroRadius.HasValue && aggroRadius.Value > 0f)
             DrawCircleOutline(spriteBatch, GetDebugCenter(), aggroRadius.Value, Color.LimeGreen);
-    }
-
-    protected virtual Rectangle? GetDebugBodyBounds()
-    {
-        return GetBounds();
-    }
-
-    protected virtual Rectangle? GetDebugAttackBounds()
-    {
-        return null;
-    }
-
-    protected virtual float? GetDebugAggroRadius()
-    {
-        return null;
-    }
-
-    protected virtual Vector2 GetDebugCenter()
-    {
-        Rectangle bounds = GetBounds();
-        return new Vector2(bounds.Center.X, bounds.Center.Y);
     }
 
     private static void DrawRectOutline(SpriteBatch spriteBatch, Rectangle rect, Color color)
@@ -429,7 +471,7 @@ public abstract class Enemy : Entity
             angle,
             Vector2.Zero,
             SpriteEffects.None,
-            0f
+            0
         );
     }
 #else
