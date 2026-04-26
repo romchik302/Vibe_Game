@@ -30,6 +30,10 @@ public class ChasingEnemy : Enemy
     protected virtual float AnimFrameDuration => 0.2f;
 
     public Vector2 ChaseTarget { get; set; }
+    public float BodyHitboxScale { get; set; } = 0.65f;
+    public float AttackHitboxScale { get; set; } = 0.82f;
+    public float HitboxOffsetXFactor { get; set; } = 0.18f;
+    public float HitboxOffsetYPixels { get; set; } = 0f;
 
     public ChasingEnemy(
         Vector2 position,
@@ -44,8 +48,8 @@ public class ChasingEnemy : Enemy
         _collisionRadius = collisionRadius;
 
         // Настройка хитбоксов
-        _bodyRadius = collisionRadius * 0.8f;
-        _attackRadius = collisionRadius * 0.9f;
+        _bodyRadius = collisionRadius * BodyHitboxScale;
+        _attackRadius = collisionRadius * AttackHitboxScale;
 
         Color = Color.White;
         RecoilResistance = 0.7f;
@@ -75,6 +79,7 @@ public class ChasingEnemy : Enemy
 
     protected override void UpdateEnemy(GameTime gameTime)
     {
+        RefreshHitboxParameters();
         EnsureSpriteConfigured();
         UpdateAnimation(gameTime);
 
@@ -124,15 +129,19 @@ public class ChasingEnemy : Enemy
             || _collision.IsPointBlockedByWall(new Vector2(centerWorld.X + o, centerWorld.Y + o));
     }
 
-    // >>> ГЛАВНОЕ: смещённый центр под "тело"
+    // >>> ГЛАВНОЕ: смещённый центр под "тело" (голова)
     protected Vector2 GetBodyCenter(Vector2 basePos)
     {
-        float offsetX = _frameWidth * 0.25f;
+        // Хитбокс всегда там где голова - при движении вправо смещаем влево
+        // При повороте голова остается на том же месте
+        float offsetX = _frameWidth * HitboxOffsetXFactor;
 
-        if (Facing == FacingDirection.Left)
+        // Когда смотрим вправо - голова справа, хитбокс смещен влево от позиции
+        // Когда смотрим влево - голова слева, хитбокс смещен вправо от позиции
+        if (Facing == FacingDirection.Right)
             offsetX = -offsetX;
 
-        return basePos + new Vector2(offsetX, 0);
+        return basePos + new Vector2(offsetX, HitboxOffsetYPixels);
     }
 
     protected Vector2 GetBodyCenter()
@@ -181,7 +190,7 @@ public class ChasingEnemy : Enemy
                 GetHorizontalSpriteEffect(),
                 0f
             );
-
+            DrawDebugOverlay(spriteBatch);
             return;
         }
 
@@ -193,6 +202,12 @@ public class ChasingEnemy : Enemy
 
         var rect = GetBounds();
         spriteBatch.Draw(_pixel, rect, new Color(255, 50, 50, 230));
+        DrawDebugOverlay(spriteBatch);
+    }
+
+    protected override Rectangle? GetDebugAttackBounds()
+    {
+        return GetAttackBounds();
     }
 
     protected virtual void EnsureSpriteConfigured()
@@ -227,5 +242,11 @@ public class ChasingEnemy : Enemy
         _frameIndex = (_frameIndex + 1) % _frameCount;
 
         _sourceRect.X = _frameIndex * _frameWidth;
+    }
+
+    private void RefreshHitboxParameters()
+    {
+        _bodyRadius = _collisionRadius * BodyHitboxScale;
+        _attackRadius = _collisionRadius * AttackHitboxScale;
     }
 }

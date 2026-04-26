@@ -281,7 +281,7 @@ namespace Vibe_Game.Scenes
 
         public Vector2 GetRandomFreeTilePosition(Room room, int gx, int gy, Random rng)
         {
-            for (int attempt = 0; attempt < 20; attempt++)
+            for (int attempt = 0; attempt < 50; attempt++)
             {
                 int tx = rng.Next(1, WorldConfig.RoomWidthTiles - 1);
                 int ty = rng.Next(1, WorldConfig.RoomHeightTiles - 1);
@@ -290,14 +290,84 @@ namespace Vibe_Game.Scenes
                 {
                     float wx = gx * WorldConfig.RoomWidthPx + tx * WorldConfig.TileSize + WorldConfig.TileSize / 2f;
                     float wy = gy * WorldConfig.RoomHeightPx + ty * WorldConfig.TileSize + WorldConfig.TileSize / 2f;
-                    return new Vector2(wx, wy);
+                    Vector2 pos = new Vector2(wx, wy);
+
+                    // Verify the position is not inside a wall
+                    if (!IsPointBlockedByAllWalls(pos))
+                        return pos;
                 }
             }
 
-            return new Vector2(
+            // Fallback to room center
+            Vector2 centerPos = new Vector2(
                 gx * WorldConfig.RoomWidthPx + WorldConfig.RoomWidthPx / 2f,
                 gy * WorldConfig.RoomHeightPx + WorldConfig.RoomHeightPx / 2f
             );
+
+            // If center is blocked, try to find nearest free position
+            if (IsPointBlockedByAllWalls(centerPos))
+            {
+                return FindNearestFreePosition(centerPos, gx, gy);
+            }
+
+            return centerPos;
+        }
+
+        private Vector2 FindNearestFreePosition(Vector2 blockedPos, int gx, int gy)
+        {
+            // Spiral search for nearest free position
+            int maxRadius = 5;
+            for (int radius = 1; radius <= maxRadius; radius++)
+            {
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        if (Math.Abs(dx) != radius && Math.Abs(dy) != radius)
+                            continue;
+
+                        Vector2 testPos = blockedPos + new Vector2(dx * WorldConfig.TileSize, dy * WorldConfig.TileSize);
+                        if (!IsPointBlockedByAllWalls(testPos))
+                            return testPos;
+                    }
+                }
+            }
+
+            return blockedPos; // Last resort
+        }
+
+        public Vector2 PushEnemyOutOfWalls(Vector2 position, float radius)
+        {
+            // Check if position is inside a wall and push it out
+            if (!IsPointBlockedByAllWalls(position))
+                return position;
+
+            // Try pushing in each direction
+            Vector2[] directions = {
+                Vector2.UnitX,
+                -Vector2.UnitX,
+                Vector2.UnitY,
+                -Vector2.UnitY,
+                new Vector2(1, 1),
+                new Vector2(1, -1),
+                new Vector2(-1, 1),
+                new Vector2(-1, -1)
+            };
+
+            float step = WorldConfig.TileSize / 2f;
+            int maxSteps = 10;
+
+            foreach (var dir in directions)
+            {
+                for (int i = 1; i <= maxSteps; i++)
+                {
+                    Vector2 testPos = position + dir * (step * i);
+                    if (!IsPointBlockedByAllWalls(testPos))
+                        return testPos;
+                }
+            }
+
+            return position;
         }
 
         public bool TryGetFloorExitTarget(out int targetFloorIndex)
@@ -529,6 +599,7 @@ namespace Vibe_Game.Scenes
 
         private static float GetEnemyRadius(Enemy enemy)
         {
+            if (enemy is BossEnemy) return EnemyConfig.BossRadius;
             if (enemy is FlyingEnemy) return EnemyConfig.DefaultFlyingRadius;
             if (enemy is ChasingEnemy) return EnemyConfig.DefaultChasingRadius;
             if (enemy is AdaptiveChasingEnemy) return EnemyConfig.DefaultChasingRadius;

@@ -85,6 +85,7 @@ namespace Vibe_Game.Scenes
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             DrawMinimap(spriteBatch, pixel);
             DrawPlayerHealthHud(spriteBatch, pixel);
+            DrawBossHealthBar(spriteBatch, pixel);
             spriteBatch.End();
         }
 
@@ -295,6 +296,63 @@ namespace Vibe_Game.Scenes
                 );
 
                 spriteBatch.Draw(pixel, fillRect, new Color(90, 220, 110));
+            }
+        }
+
+        private void DrawBossHealthBar(SpriteBatch spriteBatch, Texture2D pixel)
+        {
+            // Find boss in current room
+            Room currentRoom = _state.FloorMap[_state.CurrentRoomGrid.X, _state.CurrentRoomGrid.Y];
+            if (currentRoom?.enemies == null)
+                return;
+
+            Gameplay.Entities.Enemies.BossEnemy boss = null;
+            foreach (var enemy in currentRoom.enemies)
+            {
+                if (enemy is Gameplay.Entities.Enemies.BossEnemy b && b.IsAlive)
+                {
+                    boss = b;
+                    break;
+                }
+            }
+
+            if (boss == null)
+                return;
+
+            Viewport viewport = _game.GraphicsDevice.Viewport;
+
+            const int barHeight = 24;
+            const int barMarginBottom = 40;
+            const int barMarginSide = 100;
+            const int barPadding = 4;
+
+            int barWidth = viewport.Width - barMarginSide * 2;
+            int barX = barMarginSide;
+            int barY = viewport.Height - barMarginBottom - barHeight;
+
+            // Background
+            Rectangle bgRect = new Rectangle(barX, barY, barWidth, barHeight);
+            spriteBatch.Draw(pixel, bgRect, new Color(20, 15, 25, 240));
+            spriteBatch.DrawRectangle(pixel, bgRect, new Color(180, 60, 60), 2);
+
+            // Health fill
+            float healthPercent = (float)boss.Health / boss.MaxHealth;
+            int fillWidth = Math.Max(0, (int)(barWidth * healthPercent));
+            Rectangle fillRect = new Rectangle(barX + barPadding, barY + barPadding, fillWidth - barPadding * 2, barHeight - barPadding * 2);
+            spriteBatch.Draw(pixel, fillRect, new Color(220, 50, 50));
+
+            // Boss name label
+            if (_roomFont != null)
+            {
+                DrawCenteredText(
+                    spriteBatch,
+                    "BOSS",
+                    _roomFont,
+                    new Vector2(viewport.Width / 2, barY - 20),
+                    new Color(255, 200, 200),
+                    0.6f,
+                    new Color(20, 10, 10, 180)
+                );
             }
         }
 

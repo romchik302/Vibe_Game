@@ -101,4 +101,9 @@ public sealed class ShooterFlyingEnemy : FlyingEnemy
             IsFriendlyToPlayer = false
         });
     }
+
+    protected override float? GetDebugAggroRadius()
+    {
+        return AggroRadius;
+    }
 }

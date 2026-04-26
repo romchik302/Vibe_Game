@@ -31,6 +31,9 @@ public abstract class Enemy : Entity
     private static Texture2D _sharedFlyingTexture;
     private static Texture2D _sharedChasingTexture;
     private static Texture2D _sharedAdaptiveTexture;
+#if DEBUG
+    private static Texture2D _debugPixel;
+#endif
 
     public int Health { get; set; }
     public int MaxHealth { get; protected set; }
@@ -43,6 +46,8 @@ public abstract class Enemy : Entity
 
     /// <summary>Пока false — AI и движение не крутятся (враг «спит» до входа игрока в комнату).</summary>
     public bool IsActivated { get; private set; }
+    public virtual bool IsInvulnerable => false;
+    public virtual bool CanDealContactDamage => true;
 
     /// <summary>Velocity отдачи (плавное отталкивание).</summary>
     private Vector2 _recoilVelocity = Vector2.Zero;
@@ -125,7 +130,7 @@ public abstract class Enemy : Entity
     /// <summary>Получить урон; при Health &lt;= 0 выставляет IsAlive = false.</summary>
     public virtual void TakeDamage(int amount)
     {
-        if (!IsAlive || amount <= 0)
+        if (!IsAlive || amount <= 0 || IsInvulnerable)
             return;
 
         Health -= amount;
@@ -215,6 +220,7 @@ public abstract class Enemy : Entity
             return;
 
         base.Draw(spriteBatch);
+        DrawDebugOverlay(spriteBatch);
     }
 
     protected Vector2 GetMovementDirectionWithRandomBehavior(Vector2 toTarget, float dt, out float speedMultiplier)
@@ -332,4 +338,101 @@ public abstract class Enemy : Entity
         double t = SharedRandom.NextDouble();
         return min + (float)t * (max - min);
     }
+
+#if DEBUG
+    protected void DrawDebugOverlay(SpriteBatch spriteBatch)
+    {
+        if (spriteBatch == null)
+            return;
+
+        if (_debugPixel == null)
+        {
+            _debugPixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+            _debugPixel.SetData(new[] { Color.White });
+        }
+
+        Rectangle? bodyBounds = GetDebugBodyBounds();
+        if (bodyBounds.HasValue)
+            DrawRectOutline(spriteBatch, bodyBounds.Value, Color.Red);
+
+        Rectangle? attackBounds = GetDebugAttackBounds();
+        if (attackBounds.HasValue)
+            DrawRectOutline(spriteBatch, attackBounds.Value, Color.CornflowerBlue);
+
+        float? aggroRadius = GetDebugAggroRadius();
+        if (aggroRadius.HasValue && aggroRadius.Value > 0f)
+            DrawCircleOutline(spriteBatch, GetDebugCenter(), aggroRadius.Value, Color.LimeGreen);
+    }
+
+    protected virtual Rectangle? GetDebugBodyBounds()
+    {
+        return GetBounds();
+    }
+
+    protected virtual Rectangle? GetDebugAttackBounds()
+    {
+        return null;
+    }
+
+    protected virtual float? GetDebugAggroRadius()
+    {
+        return null;
+    }
+
+    protected virtual Vector2 GetDebugCenter()
+    {
+        Rectangle bounds = GetBounds();
+        return new Vector2(bounds.Center.X, bounds.Center.Y);
+    }
+
+    private static void DrawRectOutline(SpriteBatch spriteBatch, Rectangle rect, Color color)
+    {
+        if (rect.Width <= 0 || rect.Height <= 0)
+            return;
+
+        spriteBatch.Draw(_debugPixel, new Rectangle(rect.Left, rect.Top, rect.Width, 1), color);
+        spriteBatch.Draw(_debugPixel, new Rectangle(rect.Left, rect.Bottom - 1, rect.Width, 1), color);
+        spriteBatch.Draw(_debugPixel, new Rectangle(rect.Left, rect.Top, 1, rect.Height), color);
+        spriteBatch.Draw(_debugPixel, new Rectangle(rect.Right - 1, rect.Top, 1, rect.Height), color);
+    }
+
+    private static void DrawCircleOutline(SpriteBatch spriteBatch, Vector2 center, float radius, Color color)
+    {
+        const int segments = 40;
+        if (radius <= 1f)
+            return;
+
+        Vector2 prev = center + new Vector2(radius, 0f);
+        for (int i = 1; i <= segments; i++)
+        {
+            float t = i / (float)segments;
+            float a = MathHelper.TwoPi * t;
+            Vector2 next = center + new Vector2(MathF.Cos(a), MathF.Sin(a)) * radius;
+            DrawLine(spriteBatch, prev, next, color);
+            prev = next;
+        }
+    }
+
+    private static void DrawLine(SpriteBatch spriteBatch, Vector2 from, Vector2 to, Color color)
+    {
+        Vector2 edge = to - from;
+        float length = edge.Length();
+        if (length < 1f)
+            return;
+
+        float angle = MathF.Atan2(edge.Y, edge.X);
+        spriteBatch.Draw(
+            _debugPixel,
+            new Rectangle((int)from.X, (int)from.Y, (int)length, 1),
+            null,
+            color,
+            angle,
+            Vector2.Zero,
+            SpriteEffects.None,
+            0f
+        );
+    }
+#else
+    protected void DrawDebugOverlay(SpriteBatch spriteBatch) { }
+#endif
 }

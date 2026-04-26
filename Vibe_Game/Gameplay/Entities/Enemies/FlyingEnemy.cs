@@ -144,6 +144,7 @@ public class FlyingEnemy : Enemy
                 GetHorizontalSpriteEffect(),
                 0f
             );
+            DrawDebugOverlay(spriteBatch);
             return;
         }
 
@@ -155,6 +156,7 @@ public class FlyingEnemy : Enemy
 
         var rect = GetBounds();
         spriteBatch.Draw(_pixel, rect, new Color(200, 80, 200, 230));
+        DrawDebugOverlay(spriteBatch);
     }
 
     private void EnsureSpriteConfigured()

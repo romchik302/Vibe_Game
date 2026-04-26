@@ -95,11 +95,6 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
 
         EnsureSpriteConfigured();
 
-        // Рисуем контур радиуса (очень тонкий, не мешает видеть врага)
-#if DEBUG
-        DrawChaseRadiusOutline(spriteBatch);
-#endif
-
         if (_spriteSheet != null)
         {
             spriteBatch.Draw(
@@ -113,6 +108,7 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
                 GetHorizontalSpriteEffect(),
                 0f
             );
+            DrawDebugOverlay(spriteBatch);
             return;
         }
 
@@ -129,49 +125,7 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
             : new Color(200, 80, 80, 230);
 
         spriteBatch.Draw(_pixel, rect, enemyColor);
-    }
-
-    /// <summary>
-    /// Рисует только контур круга (не заливает)
-    /// </summary>
-    private void DrawChaseRadiusOutline(SpriteBatch spriteBatch)
-    {
-        if (_pixel == null) return;
-
-        float radius = _currentChaseRadius;
-        Vector2 center = Position;
-
-        // Рисуем точки по кругу
-        int pointCount = 40;
-        Color dotColor = _hasPlayerEnteredRadius
-            ? new Color(255, 80, 80, 200)   // Ярко-красные точки
-            : new Color(255, 150, 150, 150); // Бледно-красные точки
-
-        for (int i = 0; i < pointCount; i++)
-        {
-            float angle = (i * MathHelper.TwoPi / pointCount);
-            float x = center.X + (float)Math.Cos(angle) * radius;
-            float y = center.Y + (float)Math.Sin(angle) * radius;
-
-            // Рисуем точку 3x3 пикселя
-            spriteBatch.Draw(_pixel, new Rectangle((int)x - 1, (int)y - 1, 3, 3), dotColor);
-        }
-    }
-
-    private void DrawLine(SpriteBatch spriteBatch, Vector2 start, Vector2 end, Color color, int thickness = 1)
-    {
-        Vector2 edge = end - start;
-        float angle = (float)Math.Atan2(edge.Y, edge.X);
-        float length = edge.Length();
-
-        spriteBatch.Draw(_pixel,
-            new Rectangle((int)start.X, (int)start.Y, (int)length, thickness),
-            null,
-            color,
-            angle,
-            Vector2.Zero,
-            SpriteEffects.None,
-            0);
+        DrawDebugOverlay(spriteBatch);
     }
 
     public void ResetRadiusState()
@@ -182,6 +136,11 @@ internal class AdaptiveChasingEnemy : ChasingEnemy
 
     public bool HasPlayerEnteredRadius => _hasPlayerEnteredRadius;
     public float CurrentChaseRadius => _currentChaseRadius;
+
+    protected override float? GetDebugAggroRadius()
+    {
+        return _currentChaseRadius;
+    }
 
     protected override void EnsureSpriteConfigured()
     {
