@@ -32,7 +32,7 @@ public class ChasingEnemy : Enemy
     public Vector2 ChaseTarget { get; set; }
     public float BodyHitboxScale { get; set; } = 0.65f;
     public float AttackHitboxScale { get; set; } = 0.82f;
-    public float HitboxOffsetXFactor { get; set; } = 0.18f;
+    public float HitboxOffsetXFactor { get; set; } = 0f;
     public float HitboxOffsetYPixels { get; set; } = 0f;
 
     public ChasingEnemy(
@@ -129,19 +129,9 @@ public class ChasingEnemy : Enemy
             || _collision.IsPointBlockedByWall(new Vector2(centerWorld.X + o, centerWorld.Y + o));
     }
 
-    // >>> ГЛАВНОЕ: смещённый центр под "тело" (голова)
     protected Vector2 GetBodyCenter(Vector2 basePos)
     {
-        // Хитбокс всегда там где голова - при движении вправо смещаем влево
-        // При повороте голова остается на том же месте
-        float offsetX = _frameWidth * HitboxOffsetXFactor;
-
-        // Когда смотрим вправо - голова справа, хитбокс смещен влево от позиции
-        // Когда смотрим влево - голова слева, хитбокс смещен вправо от позиции
-        if (Facing == FacingDirection.Right)
-            offsetX = -offsetX;
-
-        return basePos + new Vector2(offsetX, HitboxOffsetYPixels);
+        return basePos + new Vector2(0, HitboxOffsetYPixels);
     }
 
     protected Vector2 GetBodyCenter()
@@ -176,8 +166,11 @@ public class ChasingEnemy : Enemy
 
         if (_spriteSheet != null)
         {
-            // >>> Смещаем origin вправо (тело справа)
-            var origin = new Vector2(_frameWidth * 0.75f, _frameHeight / 2f);
+            float headX = 52f; // позиция головы внутри кадра
+
+            var origin = Facing == FacingDirection.Right
+                ? new Vector2(headX, _frameHeight / 2f)
+                : new Vector2(_frameWidth - headX, _frameHeight / 2f);
 
             spriteBatch.Draw(
                 _spriteSheet,
